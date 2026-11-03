@@ -17,6 +17,8 @@ It is one HTML file with no install and no dependencies.
 - **Live parameters**: μ, σ, R, T, kernel rings β, kernel and growth shapes. In multi-channel mode, every kernel has its own μ, σ and h. Each slider marks the species' original value.
 - **Graphs** that explain why a creature lives or dies: the kernel profile, the growth function G(U) with the current distribution of U drawn over it, and mass over time (per channel).
 - **Brushes**: draw, erase, stamp (drag to aim), random soup and **obstacles**. Obstacle cells always stay empty, so creatures get cut or turn away. One click lays an **obstacle course**. In multi-channel mode you choose which channel to paint.
+- **Roomy worlds**: *Auto* size gives single-channel creatures a 512² world (four times the area, so they rarely bump into each other) and heavy multi-channel rules 256². You can also pick 128²–1024²; the real steps/s is always shown.
+- **Mixed worlds**: with *Stamp* selected, click any single-channel species once to stamp it (double-click restarts with it). Stamping a species with a different rule moves it into its own channel with its own kernel, so up to 3 species share one world. Each keeps exactly its own physics: test 39 matches each one's solo run within 0.02 %. They overlap without interacting.
 - **World edge**: *wrap-around* (the original torus; repeated copies on wide screens are dimmed) or *walled* (outside the edge is empty, and creatures hit the wall).
 - **Views**: creature A, neighbor sum U, growth G. Also a follow camera, zoom and pan, and the torus seam shown on screen.
 - Share links (all parameters in the URL), PNG export, Korean and English.
@@ -55,7 +57,7 @@ Robustness: a candidate is re-run with shifted positions and angles (6 variants)
 ## Verification
 | Check | Result |
 |---|---|
-| `?test=1` unit tests (kernel, growth, RLE, CPU = GPU, torus, all species alive, speeds vs reference, multi-channel vs reference, discovery, storage, URL, translations, ecosystem re-run, walled world, obstacles, showcase vs reference + claims) | 37 / 37 |
+| `?test=1` unit tests (kernel, growth, RLE, CPU = GPU, torus, all species alive, speeds vs reference, multi-channel vs reference, discovery, storage, URL, translations, ecosystem re-run, walled world, obstacles, showcase vs reference + claims, world sizes, mixed world) | 39 / 39 |
 | Real mouse/keyboard flows (draw, erase, stamp, soup, multi-channel brushes, kernel cards, links, reset, view modes, first-visit hint) | all pass |
 | Text fit + contrast ≥ 4.5 at 360 / 390 / 1024 / 1366 / 1920 px, Korean and English | clean |
 
@@ -79,6 +81,7 @@ Species data comes from [github.com/Chakazul/Lenia](https://github.com/Chakazul/
 - **단일 채널 12종, 다채널 6종**: 원작 Python 구현과 결과가 같은지 확인했어요.
 - **생태계 프리셋**: 자동 탐색으로 공생 쌍 1개를 찾았어요. 따로 두면 둘 다 죽고, 정확히 겹치면 함께 살아요. 영역 싸움과 포식자-먹이도 탐색했지만, 조건을 바꿔도 유지되는 규칙은 찾지 못했어요(README 'Ecosystem search' 참고).
 - **쇼케이스**: 분열하는 세포, 멈추지 않는 분열, 벌집 같은 세포 조직, 자라는 군체, 세 마리 유영체, 무리 짓는 개체들, 혈관 만들기. 원작자 메모가 아니라 직접 측정한 내용을 설명에 적었어요.
+- **넓은 세상 / 섞인 세상**: 단일 채널 생물은 기본으로 512²(4배 넓은) 세상에서 살아요. 찍기 도구를 고른 뒤 도감 생물을 한 번 누르면 그 생물을 찍고, 두 번 누르면 그 생물로 다시 시작해요. 다른 종을 찍으면 각자 자기 규칙으로 한 세상에 함께 살아요(최대 3종, 서로 영향은 주지 않음).
 - **장애물 / 세상 가장자리**: 장애물을 그리거나 장애물 코스를 깔 수 있어요. 세상은 '이어진 세상'(원작 방식)과 '벽 있는 세상' 중에서 골라요.
 - **신종 탐색**: 무작위 규칙과 수프를 시험해서, 빈 세상에 혼자 두어도 살아남는 생물만 골라요. 마음에 들면 '내 발견'에 저장해요.
 - **그래프**: 지금 칸들의 U 분포가 색칠된 성장 구간 안에 있는지 보면, 생물이 왜 죽는지 보여요.

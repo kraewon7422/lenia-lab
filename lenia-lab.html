@@ -66,6 +66,8 @@ section+section{margin-top:18px}
 #discFound .card .save{margin-top:2px;min-height:28px;padding:2px 6px;font-size:12px}
 .gempty{grid-column:1/-1;font-size:12px;color:var(--muted);margin:2px 0 4px}
 .card.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.card.pick{outline:2px dashed var(--acc2);outline-offset:2px}
+.card.pick::after{content:'⊕';position:absolute;right:8px;top:6px;color:var(--acc2);font-size:15px;font-weight:700}
 .card canvas{width:100%;aspect-ratio:1;border-radius:6px;display:block;background:#000}
 .card .nm{font-size:12px;font-weight:600;line-height:1.25}
 .card .lt{font-size:10.5px;color:var(--muted);font-style:italic;line-height:1.2;display:flex;justify-content:space-between;align-items:flex-end;gap:4px}
@@ -84,7 +86,7 @@ section+section{margin-top:18px}
 #viewBtns .btn{background:#141516}
 #legend{position:absolute;right:12px;bottom:14px;background:#141516;border:1px solid var(--line2);border-radius:8px;padding:5px 9px;font-size:12px;color:var(--text);display:flex;gap:10px;align-items:center;max-width:calc(100% - 24px)}
 #legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-1px}
-#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%) translateY(-8px);background:#1c2430;border:1px solid var(--line2);border-radius:8px;padding:6px 12px;opacity:0;transition:.2s;pointer-events:none;white-space:nowrap;font-size:13px}
+#toast{position:absolute;left:50%;bottom:62px;transform:translateX(-50%) translateY(8px);max-width:calc(100% - 24px);white-space:normal;text-align:center;background:#1b1c1e;border:1px solid var(--line2);border-radius:8px;padding:6px 12px;opacity:0;transition:.2s;pointer-events:none;font-size:13px}
 #toast.on{opacity:1;transform:translateX(-50%)}
 
 .prow{display:grid;grid-template-columns:30px minmax(0,1fr) 70px;align-items:center;gap:8px;margin:6px 0}
@@ -377,6 +379,8 @@ const I18N = {
     edge:'세상 가장자리', eWrap:'이어진 세상', eWall:'벽 있는 세상', eWrapH:'오른쪽 끝을 넘으면 왼쪽에서 나와요 (원작 Lenia 방식). 화면에 이어 보이는 어두운 부분은 같은 세상의 복사본이에요.', eWallH:'가장자리 밖은 빈 공간이에요. 생물이 넘어가지 못하고 벽에 부딪혀요.',
     tWall:'장애물', hWall:'드래그해서 장애물을 그려요. 장애물 칸은 항상 비어 있어서, 생물이 닿으면 그 부분이 깎여요. 지우기로 없앨 수 있어요.', course:'장애물 코스',
     gridAuto:'자동', 
+    mixName:'섞인 세상', mixDesc:'채널마다 자기 규칙으로 살아요. 서로 영향은 주지 않고 겹쳐 지나가요.', mixAdded:'새 채널에 {n} 추가 — 각자 자기 규칙으로 살아요', mixMax:'한 세상에는 최대 3종까지 섞을 수 있어요', mixT:'시간 해상도 T가 달라서 같은 세상에 넣을 수 없어요',
+    picked:'찍을 생물: {n} (두 번 누르면 이 생물로 다시 시작)', stampWho:'찍을 생물 {n} — 도감에서 한 번 눌러 바꿔요', dblHint:'다채널 생물은 두 번 눌러 불러와요',
     help:'도움말', testsRun:'단위 테스트 실행 중…', testsTitle:'단위 테스트', close:'닫기', custom:'(직접 만든 세상)',
     cm_lenia:'Lenia', cm_magma:'마그마', cm_glacier:'빙하', cm_neon:'네온',
     helpHtml:`<h3>Lenia Lab</h3>
@@ -390,7 +394,7 @@ A ← clip(A + dt·G(U), 0, 1)
 <h4>해 볼 것</h4>
 <ul><li>도감에서 생물을 고른 뒤 <b>μ나 σ를 조금씩</b> 바꿔 보세요. 생물이 변형되거나 죽거나 폭발해요. 슬라이더의 눈금이 원래 값이에요.</li>
 <li><b>그래프</b>에서 지금 칸들의 U 분포가 색칠된 구간 안에 있는지 보세요. 생물이 죽는 이유가 보여요.</li>
-<li><b>생물 찍기</b>로 같은 종을 여러 마리 놓아 부딪히게 해 보세요.</li>
+<li><b>생물 찍기</b>를 고른 뒤 도감에서 생물을 <b>한 번</b> 누르면, 그 생물을 찍을 수 있어요. 다른 종을 찍으면 '섞인 세상'이 되어 각자 자기 규칙으로 살아요. <b>두 번</b> 누르면 그 생물로 다시 시작해요.</li>
 <li><b>장애물 코스</b>를 깔면 생물이 기둥 사이를 지나가다 몸이 깎이거나 방향을 틀어요.</li>
 <li><b>무작위 수프</b>를 뿌리면 가끔 저절로 생물이 생겨나요.</li>
 <li>화면의 옅은 <b>파란 선</b>은 세상의 경계예요. 기본은 위아래·좌우가 이어진 세상이라, 경계를 넘은 생물은 반대편에서 나와요. 어둡게 보이는 부분은 같은 세상의 복사본이에요. <b>그래프 → 세상 가장자리</b>에서 벽 있는 세상으로 바꿀 수 있어요.</li></ul>
@@ -426,6 +430,8 @@ A ← clip(A + dt·G(U), 0, 1)
     edge:'World edge', eWrap:'Wrap-around', eWall:'Walled', eWrapH:'Leaving the right side brings you back on the left (original Lenia). The dimmed area is a repeated copy of the same world.', eWallH:'Outside the edge is empty space. Creatures cannot cross it and hit the wall.',
     tWall:'Obstacle', hWall:'Drag to draw obstacles. Obstacle cells always stay empty, so a creature touching one gets cut there. Erase removes them.', course:'Obstacle course',
     gridAuto:'Auto', 
+    mixName:'Mixed world', mixDesc:'each lives by its own rule in its own channel; they overlap without affecting each other.', mixAdded:'{n} joined in a new channel — each keeps its own rule', mixMax:'A world can mix at most 3 species', mixT:'Different time resolution T — cannot share one world',
+    picked:'Stamp: {n} (double-click to restart with it)', stampWho:'stamping {n} — click a species to change', dblHint:'Double-click to load a multi-channel creature',
     help:'Help', testsRun:'Running unit tests…', testsTitle:'Unit tests', close:'Close', custom:'(your own world)',
     cm_lenia:'Lenia', cm_magma:'Magma', cm_glacier:'Glacier', cm_neon:'Neon',
     helpHtml:`<h3>Lenia Lab</h3>
@@ -439,7 +445,7 @@ A ← clip(A + dt·G(U), 0, 1)
 <h4>Things to try</h4>
 <ul><li>Pick a species, then nudge <b>μ or σ</b>. It deforms, dies or explodes. The tick on each slider marks the original value.</li>
 <li>In <b>Graphs</b>, check whether the cells' U values sit inside the shaded band — you can see why a creature dies.</li>
-<li>Use <b>Stamp</b> to place several of the same species and let them collide.</li>
+<li>With <b>Stamp</b> selected, click a species <b>once</b> to stamp it. Stamping a different species makes a 'mixed world' where each keeps its own rule. <b>Double-click</b> restarts with that species.</li>
 <li>Lay an <b>Obstacle course</b> and watch creatures squeeze between pillars, get cut or turn away.</li>
 <li>Drop <b>Random soup</b> — sometimes creatures emerge by themselves.</li>
 <li>The faint <b>blue lines</b> are the edge of the world. By default it wraps around, so a creature leaving one side comes back on the other; the dimmed area is a repeated copy. Switch to a walled world under <b>Graphs → World edge</b>.</li></ul>
@@ -882,7 +888,7 @@ const torusDelta = (a, b, N) => { let d = b - a; d -= Math.round(d / N) * N; ret
 
 /* ===================== APP STATE ===================== */
 const SPEEDS = [5, 10, 20, 30, 60, 120, 240, 480];   // steps per second
-const S = { grid: 'auto', edge: 'wrap', mode: 'single', ms: 0, rule: null, sel: 0, ch: 0, N: 512, sp: 0, R: 13, T: 10, m: 0.15, s: 0.015, b: [1], kn: 1, gn: 1, speed: 4, running: true, cmap: 'lenia', view: 'A', tool: 'draw', brush: 14, custom: false };
+const S = { stampSp: null, grid: 'auto', edge: 'wrap', mode: 'single', ms: 0, rule: null, sel: 0, ch: 0, N: 512, sp: 0, R: 13, T: 10, m: 0.15, s: 0.015, b: [1], kn: 1, gn: 1, speed: 4, running: true, cmap: 'lenia', view: 'A', tool: 'draw', brush: 14, custom: false };
 let world = null, KER = null, MKER = null;
 const view = { k: 1, ox: 0, oy: 0 };    // k = zoom (1 = whole world fits), o = world coords of top-left
 let follow = true, editing = false, edited = false, vel = { x: 0, y: 0 };  // camera follows the centroid (smoothed, extrapolated with velocity)
@@ -905,12 +911,12 @@ function muOf(ch) { if (S.mode !== 'multi') return S.m; const ks = S.rule.kernel
 function reloadCurrent(keepParams) { if (S.mode === 'multi') loadMulti(S.ms, keepParams); else loadSpecies(S.sp, keepParams); }
 function loadMulti(j, keepParams) {
   const ms = MSPECIES[j]; if (!ms) return;
-  sizeWorldFor('multi'); S.mode = 'multi'; S.ms = j; S.custom = false; S.sel = Math.min(S.sel, ms.params.length - 1); S.ch = Math.min(S.ch, ms.cells.length - 1);
+  sizeWorldFor(ms.mix ? 'single' : 'multi'); if (!ms.mix) S.stampSp = null; S.mode = 'multi'; S.ms = j; S.custom = false; S.sel = Math.min(S.sel, ms.params.length - 1); S.ch = Math.min(S.ch, ms.cells.length - 1);
   if (!keepParams || !S.rule) S.rule = ruleFromMS(ms);
   ensureWorld(true); rebuildMulti();
   world.clear(); hist.length = 0; lastStat = null; speedEMA = null; hadLife = true;
   const pat = ms.stamps ? patternTex(SPECIES[0], 0) : patternTexM(ms);
-  if (ms.stamps) for (const st of ms.stamps) world.paint(2, { x: S.N / 2 + st.dx, y: S.N / 2 + st.dy, ang: st.th - ORB_TH0, pat: patternTex(SPECIES[0], st.ch) });
+  if (ms.stamps) for (const st of ms.stamps) world.paint(2, { x: S.N / 2 + st.dx, y: S.N / 2 + st.dy, ang: st.th - ORB_TH0, pat: patternTex(SPECIES[st.sp || 0], st.ch) });
   else world.paint(2, { x: S.N / 2, y: S.N / 2, ang: 0, pat });
   world.steps = 0; vel = { x: 0, y: 0 }; edited = false;
   centerView(S.N / 2, S.N / 2, ms.stamps ? 1.6 * S.N / 256 : Math.max(1, Math.min(8, S.N / (Math.max(pat.w, pat.h) * 4)))); setFollow(!ms.stamps || ms.eco === 'symbiosis');
@@ -919,7 +925,7 @@ function loadMulti(j, keepParams) {
 
 function loadSpecies(i, keepParams) {
   const sp = SPECIES[i]; if (!sp) return;
-  sizeWorldFor('single'); S.sp = i; S.custom = false; S.mode = 'single'; ensureWorld(false);
+  sizeWorldFor('single'); S.sp = i; S.stampSp = i; S.custom = false; S.mode = 'single'; ensureWorld(false);
   if (!keepParams) { const from = { m: S.m, s: S.s, R: S.R, T: S.T }; Object.assign(S, { R: sp.R, T: sp.T, m: sp.m, s: sp.s, b: parseB(sp.b), kn: 1, gn: 1 }); tweenSliders(from); }
   rebuildKernel();
   world.clear(); hist.length = 0; lastStat = null; speedEMA = null; hadLife = true;
@@ -934,6 +940,56 @@ function obstacleCourse() {      // pillars on a jittered grid, leaving room aro
   edited = true;
 }
 function clearWorld() { edited = false; world.clearObs(); world.clear(); hist.length = 0; lastStat = null; speedEMA = null; hadLife = false; S.custom = true; syncInfo(); }
+
+/* ===================== MIXED WORLD =====================
+   Different single-channel species in one world: each lives in its own channel with its own kernel
+   (c0 = c1 = its channel, r = R_i / R_max), so each keeps exactly its own rule. They overlap without interacting. */
+const isMix = () => S.mode === 'multi' && MSPECIES[S.ms] && MSPECIES[S.ms].mix;
+const stampIdx = () => S.stampSp != null ? S.stampSp : (S.mode === 'single' ? S.sp : null);
+function ruleOf(sp) { return { R: sp.R, T: sp.T, m: sp.m, s: sp.s, b: parseB(sp.b), kn: 1, gn: 1 }; }
+function curSingleRule() { return { R: S.R, T: S.T, m: S.m, s: S.s, b: S.b.slice(), kn: S.kn, gn: S.gn }; }
+const sameRule = (a, b) => a.R === b.R && a.T === b.T && a.m === b.m && a.s === b.s && a.kn === b.kn && a.gn === b.gn && a.b.length === b.b.length && a.b.every((v, i) => Math.abs(v - b.b[i]) < 1e-9);
+function mixRefresh(members) {        // members: [{sp (index or null), rule, label: {ko, en}}]
+  const mx = MSPECIES[MIXI], Rm = Math.max(...members.map(m => m.rule.R));
+  mx.members = members;
+  mx.params = members.map((m, i) => ({ R: Rm, T: m.rule.T, b: m.rule.b.map(fmtFrac).join(','), m: m.rule.m, s: m.rule.s, h: 1, r: +(m.rule.R / Rm).toFixed(6), kn: m.rule.kn, gn: m.rule.gn, c: [i, i] }));
+  mx.cells = members.map(m => m.sp != null ? SPECIES[m.sp].cells : '');
+  mx.stamps = members.map((m, i) => ({ ch: i, sp: m.sp != null ? m.sp : 0, dx: Math.round((i - (members.length - 1) / 2) * 90), dy: 0, th: ORB_TH0 }));
+  for (const L of ['ko', 'en']) { mx[L].name = I18N[L].mixName; mx[L].desc = members.map(m => m.label[L]).join(' + ') + ' — ' + I18N[L].mixDesc; }
+  return { R: Rm, T: members[0].rule.T, C: members.length, kernels: members.map((m, i) => ({ b: m.rule.b.slice(), r: m.rule.R / Rm, m: m.rule.m, s: m.rule.s, h: 1, c0: i, c1: i, kn: m.rule.kn, gn: m.rule.gn })) };
+}
+const memberLabel = (sp, custom) => ({ ko: sp.ko.name + (custom ? ' (바꾼 규칙)' : ''), en: sp.en.name + (custom ? ' (edited rule)' : '') });
+function mixChannelFor(i) {        // channel for species i in the current world; converts / grows the mixed world if needed; -1 if impossible
+  const sp = SPECIES[i], r = ruleOf(sp);
+  if (S.mode === 'single') {
+    if (sameRule(r, curSingleRule())) return 0;
+    if (r.T !== S.T) { toast(t('mixT')); return -1; }
+    const N = S.N, A = world.read(), O = world.hasObs ? world.readObs() : null, steps = world.steps;
+    const members = [{ sp: S.sp, rule: curSingleRule(), label: memberLabel(SPECIES[S.sp], S.custom) }, { sp: i, rule: r, label: memberLabel(sp, false) }];
+    const rule = mixRefresh(members);
+    world.dispose(); world = new World(N, true); world.wall = S.edge === 'wall';
+    const a4 = new Float32Array(N * N * 4); for (let k = 0; k < N * N; k++) a4[k * 4] = A[k]; world.setState(a4); if (O) world.setObs(O); world.steps = steps;
+    S.mode = 'multi'; S.ms = MIXI; S.rule = rule; S.sel = 1; S.ch = 1; S.custom = false; rebuildMulti(); buildMultiParams(); syncAll(); writeHash(); toast(tf('mixAdded', { n: sp[LANG].name }));
+    return 1;
+  }
+  if (!isMix()) return -2;
+  const mx = MSPECIES[MIXI], cur = k => ({ ...mx.members[k].rule, m: S.rule.kernels[k].m, s: S.rule.kernels[k].s });   // members' rules as currently edited
+  const at = mx.members.findIndex((m, k) => sameRule(cur(k), r));
+  if (at >= 0) return at;
+  if (mx.members.length >= 3) { toast(t('mixMax')); return -1; }
+  if (r.T !== S.rule.T) { toast(t('mixT')); return -1; }
+  const members = mx.members.map((m, k) => ({ ...m, rule: cur(k) })).concat([{ sp: i, rule: r, label: memberLabel(sp, false) }]);
+  S.rule = mixRefresh(members); S.sel = members.length - 1; S.ch = members.length - 1; rebuildMulti(); buildMultiParams(); syncAll(); writeHash(); toast(tf('mixAdded', { n: sp[LANG].name }));
+  return members.length - 1;
+}
+function stampAt(x, y, ang) {
+  const i = stampIdx();
+  if (i != null && (S.mode === 'single' || isMix())) { const ch = mixChannelFor(i); if (ch < 0) return; world.paint(2, { x, y, ang, pat: patternTex(SPECIES[i], ch) }); }
+  else world.paint(2, { x, y, ang, pat: curPattern() });
+  hist.length = 0; edited = true;
+}
+function stampPreview() { const i = stampIdx(); return i != null && (S.mode === 'single' || isMix()) ? patternTex(SPECIES[i]) : curPattern(); }
+function pickStamp(i) { S.stampSp = i; syncTool(); syncGallery(); toast(tf('picked', { n: SPECIES[i][LANG].name })); }
 
 /* ===================== VIEW / CANVAS ===================== */
 let cssW = 0, cssH = 0, dpr = 1;
@@ -991,7 +1047,7 @@ function drawStampGuide() {
   guide.width = cv.width; guide.height = cv.height; guide.style.width = cssW + 'px'; guide.style.height = cssH + 'px';
   const g = guide.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, cssW, cssH);
   if (!stampDrag) return;
-  const p = curPattern(), c = cpp(), s0 = stampDrag;
+  const p = stampPreview(), c = cpp(), s0 = stampDrag;
   g.save(); g.translate(s0.sx, s0.sy); g.rotate(s0.ang);
   g.strokeStyle = 'rgba(240,180,76,.95)'; g.setLineDash([5, 4]); g.lineWidth = 1.5;
   g.strokeRect(-p.w / 2 / c, -p.h / 2 / c, p.w / c, p.h / c);
@@ -1051,7 +1107,7 @@ function endPointer(e) {
   if (pinch) { if (pointers.size < 2) pinch = null; return; }
   if (stampDrag && e.type === 'pointerup') {
     const w = screenToWorld(stampDrag.sx, stampDrag.sy);
-    world.paint(2, { x: w.x, y: w.y, ang: stampDrag.ang, pat: curPattern() }); hist.length = 0; edited = true;
+    stampAt(w.x, w.y, stampDrag.ang);
   }
   stampDrag = null; clearGuide(); panDrag = null; lastDab = null; editing = false;
 }
@@ -1234,11 +1290,12 @@ function buildGallery() {
   const card = (kind, i, draw, load) => {
     const b = document.createElement('button'); b.className = 'card'; b.dataset.kind = kind; b.dataset.i = i;
     b.innerHTML = `<canvas></canvas><span class="nm"></span><span class="lt"></span>`;
-    b.onclick = () => { load(i); if (!S.running) { S.running = true; syncPlay(); } };
+    b.onclick = () => { if (S.tool === 'stamp') { if (kind === 's') pickStamp(i); else toast(t('dblHint')); return; } load(i); if (!S.running) { S.running = true; syncPlay(); } };
+    b.ondblclick = () => { load(i); if (!S.running) { S.running = true; syncPlay(); } };
     gal.appendChild(b); draw(b.querySelector('canvas'));
   };
   sec('secSingle'); SPECIES.forEach((sp, i) => { if (!sp.mine && !sp.cand && !sp.deleted) card('s', i, c => drawThumb(c, sp), loadSpecies); });
-  sec('secMulti'); MSPECIES.forEach((ms, i) => { if (!ms.eco && !ms.show) card('m', i, c => drawThumbM(c, ms), loadMulti); });
+  sec('secMulti'); MSPECIES.forEach((ms, i) => { if (!ms.eco && !ms.show && !ms.mix) card('m', i, c => drawThumbM(c, ms), loadMulti); });
   sec('secShow'); MSPECIES.forEach((ms, i) => { if (ms.show) card('m', i, c => drawThumbM(c, ms), loadMulti); });
   if (MSPECIES.some(m => m.eco)) { sec('secEco'); MSPECIES.forEach((ms, i) => { if (ms.eco) card('m', i, c => drawThumbEco(c, ms), loadMulti); }); }
   sec('secMine');
@@ -1247,7 +1304,8 @@ function buildGallery() {
   for (const [sp, i] of mine) {
     const c = document.createElement('div'); c.className = 'card'; c.setAttribute('role', 'button'); c.tabIndex = 0; c.dataset.kind = 's'; c.dataset.i = i;
     c.innerHTML = `<canvas></canvas><span class="nmrow"><span class="nm"></span><button class="ren" aria-label="rename">✎</button></span><span class="lt"></span><button class="cdel" aria-label="delete">✕</button>`;
-    c.onclick = e => { if (e.target.closest('.cdel, .ren, .renin')) return; loadSpecies(i); if (!S.running) { S.running = true; syncPlay(); } };
+    c.onclick = e => { if (e.target.closest('.cdel, .ren, .renin')) return; if (S.tool === 'stamp') { pickStamp(i); return; } loadSpecies(i); if (!S.running) { S.running = true; syncPlay(); } };
+    c.ondblclick = e => { if (e.target.closest('.cdel, .ren, .renin')) return; loadSpecies(i); if (!S.running) { S.running = true; syncPlay(); } };
     c.onkeydown = e => { if (e.key === 'Enter' && !e.target.closest('.renin')) c.onclick(e); };
     c.querySelector('.cdel').onclick = () => deleteFind(sp); c.querySelector('.cdel').title = t('del');
     c.querySelector('.ren').onclick = () => startRename(c, sp); c.querySelector('.ren').title = t('rename');
@@ -1259,6 +1317,7 @@ function syncGallery() {
   $$('#gallery .card').forEach(b => {
     const i = +b.dataset.i, multi = b.dataset.kind === 'm', sp = multi ? MSPECIES[i] : SPECIES[i];
     b.classList.toggle('on', !S.custom && (multi ? S.mode === 'multi' && S.ms === i : S.mode === 'single' && S.sp === i));
+    b.classList.toggle('pick', S.tool === 'stamp' && !multi && stampIdx() === i);
     b.querySelector('.nm').textContent = sp[LANG].name;
     b.querySelector('.lt').innerHTML = multi ? `<span>${sp.cells.length} ${sp.cells.length === 1 && LANG === 'en' ? 'channel' : t('chans')} · ${sp.params.length} ${sp.params.length === 1 && LANG === 'en' ? 'kernel' : t('kernelsN')}</span>` : sp.mine ? `<span>${t({ move: 'kMove', spin: 'kSpin', still: 'kStill' }[sp.kind])} · R ${sp.R}</span>` : `<span>${sp.name}</span>${i < 9 ? `<span class="kbd">${i + 1}</span>` : ''}`;
     b.title = sp[LANG].desc;
@@ -1333,7 +1392,7 @@ function buildMultiParams() {
   const ex = document.createElement('p'); ex.className = 'hint'; ex.dataset.i18n = 'kExplain'; ex.textContent = t('kExplain'); ex.style.margin = '0 0 4px'; box.appendChild(ex);
   S.rule.kernels.forEach((k, i) => {
     const card = document.createElement('div'); card.className = 'kcard'; card.dataset.k = i;
-    card.innerHTML = `<div class="kh"><b>K${i + 1}</b><span class="chip c${k.c0}">${k.c0 + 1}</span>→<span class="chip c${k.c1}">${k.c1 + 1}</span><span class="kb">β ${k.b.map(fmtFrac).join(',')}${(k.r ?? 1) !== 1 ? ' · r ' + k.r : ''}</span></div>`;
+    card.innerHTML = `<div class="kh"><b>K${i + 1}</b><span class="chip c${k.c0}">${k.c0 + 1}</span>→<span class="chip c${k.c1}">${k.c1 + 1}</span><span class="kb">β ${k.b.map(fmtFrac).join(',')}${(k.r ?? 1) !== 1 ? ' · r ' + (+(+k.r).toFixed(2)) : ''}</span></div>`;
     for (const d of MPDEF) { const r = paramRow(d, () => S.rule.kernels[i][d.k], v => { S.rule.kernels[i][d.k] = v; S.custom = true; syncInfo(); writeHash(); if (i === S.sel) drawKernelGraph(); }, o.kernels[i] ? o.kernels[i][d.k] : null); card.appendChild(r); box._rows.push(r); }
     card.onclick = e => { if (e.target.closest('input')) return; S.sel = i; syncMultiParams(); drawKernelGraph(); if (lastStat) updateStats(true); };
     box.appendChild(card);
@@ -1413,7 +1472,8 @@ function syncChSeg() {
 function syncTool() {
   syncChSeg();
   $$('#toolSeg .btn').forEach(b => b.classList.toggle('on', b.dataset.v === S.tool));
-  $('#toolHint').textContent = t({ draw: 'hDraw', erase: 'hErase', stamp: 'hStamp', soup: 'hSoup', wall: 'hWall' }[S.tool]);
+  const si = stampIdx(); $('#toolHint').textContent = t({ draw: 'hDraw', erase: 'hErase', stamp: 'hStamp', soup: 'hSoup', wall: 'hWall' }[S.tool]) + (S.tool === 'stamp' && si != null && (S.mode === 'single' || isMix()) ? ' · ' + tf('stampWho', { n: SPECIES[si][LANG].name }) : '');
+  if ($('#gallery .card')) $$('#gallery .card, #discFound .card').forEach(b => b.classList.toggle('pick', S.tool === 'stamp' && b.dataset.kind !== 'm' && stampIdx() === +b.dataset.i));
   $('#brushOut').textContent = S.brush; cv.style.cursor = S.tool === 'stamp' ? 'copy' : 'crosshair';
 }
 const NARROW = matchMedia('(max-width: 899px)');
@@ -1434,6 +1494,7 @@ function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList
 
 /* ===================== URL HASH ===================== */
 function stateToHash() {
+  if (isMix()) return '#' + new URLSearchParams({ mode: 'mix', edge: S.edge, sps: MSPECIES[MIXI].members.map(m => SPECIES[m.sp].id).join(','), N: S.grid === 'auto' ? 'auto' : S.N, cm: S.cmap }).toString();
   if (S.mode === 'multi') {
     const q = new URLSearchParams({ mode: 'm', edge: S.edge, s: MSPECIES[S.ms].id, R: S.rule.R, T: S.rule.T, k: S.rule.kernels.map(k => [k.m, k.s, k.h].map(v => +(+v).toFixed(5)).join('_')).join('~'), N: S.grid === 'auto' ? 'auto' : S.N, cm: S.cmap });
     return '#' + q.toString();
@@ -1444,6 +1505,7 @@ function stateToHash() {
 }
 function parseHash(h) {
   const q = new URLSearchParams(String(h).replace(/^#/, '')), o = {};
+  if (q.get('mode') === 'mix' && q.has('sps')) { const ix = q.get('sps').split(',').map(id => SPECIES.findIndex(x => x.id === id)).filter(i => i >= 0).slice(0, 3); if (ix.length) o.mix = ix; }
   if (q.get('mode') === 'm') {
     o.mode = 'm'; const i = MSPECIES.findIndex(x => x.id === q.get('s')); if (i >= 0) o.ms = i;
     if (q.has('k')) { const ks = q.get('k').split('~').map(t => t.split('_').map(Number)); if (ks.length <= MAXK && ks.every(k => k.length === 3 && k.every(isFinite) && k[0] > -0.5 && k[0] <= 1 && k[1] > 0 && k[1] <= 0.5 && k[2] >= 0 && k[2] <= 1)) o.k = ks; }
@@ -1465,6 +1527,10 @@ function applyHash() {
   if (o.edge) { S.edge = o.edge; if (world) world.wall = S.edge === 'wall'; syncEdge(); }
   if (o.grid) { S.grid = o.grid; syncGrid(); }
   if (o.cmap) { S.cmap = o.cmap; setLUT(S.cmap); $('#cmapSel').value = S.cmap; buildGallery(); }
+  if (o.mix) {
+    loadSpecies(o.mix[0]); o.mix.slice(1).forEach((i, k) => { S.stampSp = i; stampAt(S.N / 2 + (k + 1) * 90, S.N / 2, 0); }); S.stampSp = o.mix[0];
+    applyingHash = false; return true;
+  }
   if (o.mode === 'm') {
     loadMulti(o.ms ?? 0); let ch = false;
     for (const k of ['R', 'T']) if (o[k] != null && o[k] !== S.rule[k]) { S.rule[k] = o[k]; ch = true; }
@@ -1605,7 +1671,7 @@ function radialSig(data, w, h) {
   return Array.from(bins);
 }
 const DISC = { running: false, tried: 0, found: 0, gen: null, budget: 25, now: null };
-let mineSeq = 1, BUILTIN = 12, NMS = 6;
+let mineSeq = 1, BUILTIN = 12, NMS = 6, MIXI = -1;
 const ORB_TH0 = 1.193987503378722;   // Orbium's natural heading (rad) at stamp angle 0, measured exactly like the search script (the symbiotic pair is so fragile that rounding to 1.19 kills it)
 function* discoverJob(rng, N = 128) {
   const W = new World(N); let K = null;
@@ -1682,7 +1748,8 @@ function renderFinds() {
     c.querySelector('.ckind').textContent = t({ move: 'kMove', spin: 'kSpin', still: 'kStill' }[sp.kind]);
     c.querySelector('.nm').textContent = sp[LANG].name; c.querySelector('.save').textContent = t('save'); c.title = sp[LANG].desc;
     c.querySelector('.ren').onclick = () => startRename(c, sp); c.querySelector('.ren').title = t('rename');
-    c.onclick = e => { if (e.target.closest('.save, .ren, .renin')) return; loadSpecies(i); if (!S.running) { S.running = true; syncPlay(); } };
+    c.onclick = e => { if (e.target.closest('.save, .ren, .renin')) return; if (S.tool === 'stamp') { pickStamp(i); return; } loadSpecies(i); if (!S.running) { S.running = true; syncPlay(); } };
+    c.ondblclick = e => { if (e.target.closest('.save, .ren, .renin')) return; loadSpecies(i); if (!S.running) { S.running = true; syncPlay(); } };
     c.onkeydown = e => { if (e.key === 'Enter' && !e.target.closest('.renin')) c.onclick(e); };
     c.querySelector('.save').onclick = () => saveFind(sp);
     box.appendChild(c); drawThumb(c.querySelector('canvas'), sp);
@@ -1828,7 +1895,7 @@ async function runTests() {
     ok('18. 컬러맵 4종 밝기가 0→1로 단조 증가', pass, det.join(' · ')); }
   // 19. i18n keys
   { const a = Object.keys(I18N.ko).sort().join(), b = Object.keys(I18N.en).sort().join(), sk = SPECIES.every(s => s.ko && s.en && s.ko.name && s.en.name && s.ko.desc && s.en.desc);
-    const skm = MSPECIES.every(s => s.ko && s.en && s.ko.name && s.en.name && s.ko.desc && s.en.desc);
+    const skm = MSPECIES.filter(s => !s.mix).every(s => s.ko && s.en && s.ko.name && s.en.name && s.ko.desc && s.en.desc);
     const used = $$('[data-i18n]').map(e => e.dataset.i18n).concat($$('[data-i18n-title]').map(e => e.dataset.i18nTitle)).filter(k => !(k in I18N.ko) || !(k in I18N.en));
     ok('19. 한국어/영어 키 일치 (+ 12종·다채널 6종 이름·설명)', a === b && sk && skm && used.length === 0, `ko ${Object.keys(I18N.ko).length}개, en ${Object.keys(I18N.en).length}개${used.length ? ', 없는 키: ' + used : ''}`); }
   // 20. step scheduler: steps = rate × time
@@ -1916,7 +1983,7 @@ async function runTests() {
   { let prev = null; try { prev = localStorage.getItem('leniaMine'); } catch (e) {}
     const src = SPECIES[0], sp = addFind({ R: src.R, T: 10, m: src.m, s: src.s, b: [1], cells: src.cells, w: src.w, h: src.h, kind: 'move', speed: 6 }, false);
     saveFind(sp); const a = JSON.parse(localStorage.getItem('leniaMine') || '[]').some(o => o.id === sp.id);
-    const shown = $$('#gallery .card').some(c => SPECIES[+c.dataset.i] === sp);
+    const shown = $$('#gallery .card[data-kind=s]').some(c => SPECIES[+c.dataset.i] === sp);
     deleteFind(sp); const b = JSON.parse(localStorage.getItem('leniaMine') || '[]').some(o => o.id === sp.id);
     try { if (prev === null) localStorage.removeItem('leniaMine'); else localStorage.setItem('leniaMine', prev); } catch (e) {}
     ok('31. 내 발견 저장 → 도감 표시 → 삭제 (localStorage)', a && shown && !b, `저장 ${a}, 도감 표시 ${shown}, 삭제 후 남음 ${b}`); }
@@ -1999,7 +2066,7 @@ const ECO_SEARCH = async ({ seed, count, fixed, variant, mode }) => {
     const src = SPECIES[0], sp = addFind({ R: src.R, T: 10, m: src.m, s: src.s, b: [1], cells: src.cells, w: src.w, h: src.h, kind: 'move', speed: 6 }, false);
     saveFind(sp); renameFind(sp, '  <b>헤엄이</b>   꼬리   ');
     const stored = JSON.parse(localStorage.getItem('leniaMine') || '[]').find(o => o.id === sp.id);
-    const card = $$('#gallery .card').find(c => SPECIES[+c.dataset.i] === sp);
+    const card = $$('#gallery .card[data-kind=s]').find(c => SPECIES[+c.dataset.i] === sp);
     loadSpecies(SPECIES.indexOf(sp)); const info = $('#infoT').innerHTML;
     const pass = stored && stored.title === '<b>헤엄이</b> 꼬리' && card && card.querySelector('.nm').textContent === '<b>헤엄이</b> 꼬리' && !$('#infoT b') && info.includes('&lt;b&gt;');
     renameFind(sp, ''); const reverted = sp.ko.name === I18N.ko.mineName.replace('{n}', sp.n);
@@ -2059,6 +2126,14 @@ const ECO_SEARCH = async ({ seed, count, fixed, variant, mode }) => {
     S.grid = 1024; loadSpecies(0); world.step(20, KER, params()); const m = sum(world.read()); const c = world.N === 1024 && m > 60;
     S.grid = save.grid; loadSpecies(0);
     ok('38. 세상 크기: 자동 = 단일 512² · 다채널 256², 1024² 세상도 동작', a && b && c, `단일 ${a}, 다채널 ${b}, 1024² 질량 ${m.toFixed(1)}`); }
+  // 39. mixed world: Orbium + Kronium in one world behave exactly as each would alone
+  { const save = S.grid; S.grid = 256; loadSpecies(0); S.running = false; world.clear(); world.paint(2, { x: 70, y: 128, ang: 0, pat: patternTex(SPECIES[0]) });
+    S.stampSp = 8; stampAt(190, 128, 0); const mixed = isMix() && S.rule.C === 2 && S.rule.R === 18 && Math.abs(S.rule.kernels[0].r - 13 / 18) < 1e-9;
+    stepWorld(300); world.read(); const mm = world.chanMass();
+    const solo = (i, x) => { const sp = SPECIES[i], w = mkW(256), K = gpuKernel(buildKernel(sp.R, parseB(sp.b), 1)); w.paint(2, { x, y: 128, ang: 0, pat: patternTex(sp) }); w.step(300, K, { m: sp.m, s: sp.s, T: sp.T, gn: 1 }); const m = sum(w.read()); freeKernel(K); return m; };
+    const o = solo(0, 70), k = solo(8, 190), e1 = Math.abs(mm[0] / o - 1), e2 = Math.abs(mm[1] / k - 1);
+    S.grid = save; S.stampSp = null; loadSpecies(0);
+    ok('39. 섞인 세상: 오비움 + 크로니움이 한 세상에서 각자 혼자일 때와 같게 산다 (300스텝)', mixed && e1 < 1e-3 && e2 < 1e-3, `채널 질량 ${mm[0].toFixed(2)} / ${mm[1].toFixed(2)} vs 혼자 ${o.toFixed(2)} / ${k.toFixed(2)} (오차 ${(e1 * 100).toFixed(3)}% / ${(e2 * 100).toFixed(3)}%)`); }
   } catch (e) { ok('예외 발생', false, String(e && e.stack || e)); }
   for (const w of tw) w.dispose();
   const nPass = out.filter(o => o.pass).length;
@@ -2073,6 +2148,7 @@ const ECO_SEARCH = async ({ seed, count, fixed, variant, mode }) => {
   MSPECIES.forEach(ms => { ms.id = 'm-' + ms.en.name.toLowerCase().replace(/[^a-z]+/g, '-'); });
   BUILTIN = SPECIES.length; NMS = MSPECIES.length;
   for (const e of SHOW) { e.id = 'show-' + e.en.name.toLowerCase().replace(/[^a-z]+/g, '-'); MSPECIES.push(e); }
+  MIXI = MSPECIES.push({ mix: true, id: 'mix', name: 'mixed world', members: [], params: [], cells: [], ko: { name: '', desc: '' }, en: { name: '', desc: '' } }) - 1;
   for (const e of ECO) { e.id = 'eco-' + e.eco; e.name = 'Orbium × Orbium · ' + e.eco; MSPECIES.push(e); }
   if (!gl || !FMT) { const n = $('#nogl'); n.style.display = 'flex'; n.textContent = t('noGL'); syncText(); return; }
   try { initGL(); } catch (e) { const n = $('#nogl'); n.style.display = 'flex'; n.textContent = t('noGL') + ' (' + e.message + ')'; console.error(e); return; }
