@@ -663,6 +663,71 @@ void main(){
   if (copy) col = uWall == 1 ? vec3(0.035, 0.037, 0.04) + 0.02 * step(0.5, fract((w.x + w.y) / 12.0)) : mix(vec3(0.024, 0.031, 0.047), col, 0.38);
   o = vec4(col, 1.0);
 }`;
+const FS_FLOW_U = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+uniform sampler2D uA; uniform sampler2D uP; uniform sampler2D uTaps;
+uniform int uN, uTapW, uNTaps, uRows, uNK, uWall; uniform float uMk[4], uSk[4];
+out vec4 o;
+void main(){
+  ivec2 p = ivec2(gl_FragCoord.xy); int msk = uN - 1; vec4 c = vec4(0.0);
+  for (int i = 0; i < uNTaps; i++) {
+    ivec2 tc = ivec2(i % uTapW, i / uTapW); vec4 tp = texelFetch(uTaps, tc, 0); ivec2 q = p + ivec2(tp.xy);
+    if (uWall == 1 && (q.x < 0 || q.y < 0 || q.x >= uN || q.y >= uN)) continue;
+    c += texelFetch(uTaps, tc + ivec2(0, uRows), 0) * texelFetch(uA, q & msk, 0).r;
+  }
+  vec4 h = texelFetch(uP, p, 0); float U = 0.0;
+  for (int k = 0; k < uNK; k++) { float z = (c[k] - uMk[k]) / uSk[k]; U += h[k] * (2.0 * exp(-0.5 * z * z) - 1.0); }
+  o = vec4(U);
+}`;
+const FS_FLOW_F = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+uniform sampler2D uU; uniform sampler2D uA; uniform int uN, uWall;
+out vec4 o;
+float fU(ivec2 q){ if (uWall == 1 && (q.x < 0 || q.y < 0 || q.x >= uN || q.y >= uN)) return 0.0; return texelFetch(uU, q & (uN - 1), 0).r; }
+float fA(ivec2 q){ if (uWall == 1 && (q.x < 0 || q.y < 0 || q.x >= uN || q.y >= uN)) return 0.0; return texelFetch(uA, q & (uN - 1), 0).r; }
+vec2 sobelU(ivec2 p){ return vec2(fU(p + ivec2(1, -1)) + 2.0 * fU(p + ivec2(1, 0)) + fU(p + ivec2(1, 1)) - fU(p + ivec2(-1, -1)) - 2.0 * fU(p + ivec2(-1, 0)) - fU(p + ivec2(-1, 1)),
+                                  fU(p + ivec2(-1, 1)) + 2.0 * fU(p + ivec2(0, 1)) + fU(p + ivec2(1, 1)) - fU(p + ivec2(-1, -1)) - 2.0 * fU(p + ivec2(0, -1)) - fU(p + ivec2(1, -1))); }
+vec2 sobelA(ivec2 p){ return vec2(fA(p + ivec2(1, -1)) + 2.0 * fA(p + ivec2(1, 0)) + fA(p + ivec2(1, 1)) - fA(p + ivec2(-1, -1)) - 2.0 * fA(p + ivec2(-1, 0)) - fA(p + ivec2(-1, 1)),
+                                  fA(p + ivec2(-1, 1)) + 2.0 * fA(p + ivec2(0, 1)) + fA(p + ivec2(1, 1)) - fA(p + ivec2(-1, -1)) - 2.0 * fA(p + ivec2(0, -1)) - fA(p + ivec2(1, -1))); }
+void main(){
+  ivec2 p = ivec2(gl_FragCoord.xy); float a = texelFetch(uA, p, 0).r, al = clamp(a * a, 0.0, 1.0);
+  o = vec4((1.0 - al) * sobelU(p) - al * sobelA(p), 0.0, 0.0);
+}`;
+const FS_FLOW_RT = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+uniform sampler2D uA; uniform sampler2D uFl; uniform sampler2D uP; uniform int uN, uWall; uniform float uDt, uS;
+layout(location = 0) out vec4 oA;
+layout(location = 1) out vec4 oP;
+void main(){
+  ivec2 p = ivec2(gl_FragCoord.xy); vec2 pc = vec2(p) + 0.5; float ma = 5.0 - uS, N = float(uN), acc = 0.0; vec4 pacc = vec4(0.0); int msk = uN - 1;
+  for (int dy = -5; dy <= 5; dy++) for (int dx = -5; dx <= 5; dx++) {
+    ivec2 q = p + ivec2(dx, dy);
+    if (uWall == 1 && (q.x < 0 || q.y < 0 || q.x >= uN || q.y >= uN)) continue;
+    ivec2 qq = q & msk; float a = texelFetch(uA, qq, 0).r; if (a <= 0.0) continue;
+    vec2 mu = vec2(q) + 0.5 + clamp(uDt * texelFetch(uFl, qq, 0).xy, -ma, ma);
+    if (uWall == 1) mu = clamp(mu, vec2(uS), vec2(N - uS));
+    vec2 ov = clamp(0.5 - abs(pc - mu) + uS, 0.0, min(1.0, 2.0 * uS));
+    float m = a * ov.x * ov.y / (4.0 * uS * uS);
+    acc += m; pacc += m * texelFetch(uP, qq, 0);
+  }
+  oA = vec4(acc); oP = acc > 1e-12 ? pacc / acc : texelFetch(uP, p, 0);
+}`;
+const FS_FLOW_PAINT = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+uniform sampler2D uA; uniform sampler2D uP; uniform int uN, uMode, uWall; uniform vec2 uC; uniform float uRad, uAmt, uSeed; uniform vec4 uH;
+layout(location = 0) out vec4 oA;
+layout(location = 1) out vec4 oP;
+float hash(vec2 p){ p = fract(p * vec2(443.897, 441.423) + uSeed); p += dot(p, p.yx + 19.19); return fract((p.x + p.y) * p.x); }
+void main(){
+  ivec2 p = ivec2(gl_FragCoord.xy); float a = texelFetch(uA, p, 0).r; vec4 h = texelFetch(uP, p, 0); float N = float(uN);
+  vec2 d = vec2(p) + 0.5 - uC; if (uWall == 0) d = mod(d + N * 0.5, N) - N * 0.5;
+  float add = 0.0;
+  if (uMode == 0) { float r = length(d) / uRad; if (r < 1.0) add = uAmt * (1.0 - r * r); }                 // soft brush
+  else if (uMode == 1) { float r = length(d) / uRad; if (r < 1.0) a *= smoothstep(0.8, 1.0, r); }        // erase
+  else if (uMode == 2) { if (abs(d.x) < uRad && abs(d.y) < uRad) { a = 0.0; add = uAmt * hash(vec2(p)); } } // square patch of random matter (paper init)
+  if (add > 0.0) { h = (a * h + add * uH) / (a + add); a += add; }
+  oA = vec4(a); oP = h;
+}`;
 function compile(fs) {
   const p = gl.createProgram();
   for (const [type, src] of [[gl.VERTEX_SHADER, VS], [gl.FRAGMENT_SHADER, fs]]) {
@@ -693,7 +758,7 @@ function fbo(attach) {
   return f;
 }
 function initGL() {
-  PROG = { step: compile(FS_STEP), stepm: compile(FS_STEPM), paint: compile(FS_PAINT), render: compile(FS_RENDER) };
+  PROG = { flowU: compile(FS_FLOW_U), flowF: compile(FS_FLOW_F), flowRT: compile(FS_FLOW_RT), flowPaint: compile(FS_FLOW_PAINT), step: compile(FS_STEP), stepm: compile(FS_STEPM), paint: compile(FS_PAINT), render: compile(FS_RENDER) };
   VAO = gl.createVertexArray();
   LUT_TEX = gl.createTexture();
   gl.disable(gl.DITHER); gl.disable(gl.BLEND); gl.disable(gl.DEPTH_TEST);
@@ -940,6 +1005,94 @@ function obstacleCourse() {      // pillars on a jittered grid, leaving room aro
   edited = true;
 }
 function clearWorld() { edited = false; world.clearObs(); world.clear(); hist.length = 0; lastStat = null; speedEMA = null; hadLife = false; S.custom = true; syncInfo(); }
+
+/* ===================== FLOW LENIA ENGINE (mass-conserving, parameter embedding) ===================== */
+const FLOW = { dd: 5 };
+const sigm = x => 0.5 * (Math.tanh(x / 2) + 1);
+function flowKernelValue(dist, R, k) { const D = dist / ((R + 15) * k.r); let v = 0; for (let j = 0; j < 3; j++) v += k.b[j] * Math.exp(-((D - k.a[j]) ** 2) / k.w[j]); return v * sigm(-(D - 1) * 10); }
+function buildFlowKernel(rule) {     // union taps (weights per kernel, <= 4), tails cut where every kernel is < 1e-5 of its peak
+  const K = rule.kernels, nK = K.length; if (nK > 4) throw new Error('flow: at most 4 kernels');
+  const Rm = Math.ceil(1.8 * (rule.R + 15) * Math.max(...K.map(k => k.r))), full = [], sums = new Float64Array(nK), peak = new Float64Array(nK);
+  for (let dy = -Rm; dy <= Rm; dy++) for (let dx = -Rm; dx <= Rm; dx++) { const ws = K.map(k => flowKernelValue(Math.hypot(dx, dy), rule.R, k)); full.push([dx, dy, ws]); ws.forEach((w, i) => { sums[i] += w; peak[i] = Math.max(peak[i], w); }); }
+  const list = full.filter(t => t[2].some((w, i) => w > 1e-5 * peak[i])).map(([dx, dy, ws]) => [dx, dy, ws.map((w, i) => w / sums[i])]);
+  const n = list.length, rows = Math.max(1, Math.ceil(n / TAPW)), data = new Float32Array(TAPW * rows * 2 * 4);
+  list.forEach(([dx, dy, ws], i) => { const x = i % TAPW, y = Math.floor(i / TAPW); data[(y * TAPW + x) * 4] = dx; data[(y * TAPW + x) * 4 + 1] = dy; ws.forEach((w, k) => { data[((y + rows) * TAPW + x) * 4 + k] = w; }); });
+  const tx = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tx); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, TAPW, rows * 2, 0, gl.RGBA, gl.FLOAT, data);
+  for (const [a, b] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST]]) gl.texParameteri(gl.TEXTURE_2D, a, b);
+  return { n, rows, list, nK, tex: tx };
+}
+class FlowWorld {
+  constructor(N) {
+    if (N & (N - 1)) throw new Error('N must be a power of two');
+    this.N = N; this.flow = true; this.multi = false; this.wall = false; this.cur = 0; this.steps = 0; this.hasObs = false; this.oc = 0;
+    this.tex = [texR(N, N), texR(N, N)]; this.P = [texR(N, N, null, true), texR(N, N, null, true)]; this.uTex = texR(N, N); this.F = texR(N, N, null, true);
+    this.obs = [texR(N, N), texR(N, N)];
+    this.rtFb = [fbo([this.tex[1], this.P[1]]), fbo([this.tex[0], this.P[0]])]; this.uFb = fbo([this.uTex]); this.fFb = fbo([this.F]);
+    this.oneFb = [fbo([this.tex[0]]), fbo([this.tex[1]])]; this.pFb = [fbo([this.P[0]]), fbo([this.P[1]])];
+    this.buf = new Float32Array(N * N * 4); this.clear();
+  }
+  dispose() { for (const f of [...this.rtFb, this.uFb, this.fFb, ...this.oneFb, ...this.pFb]) gl.deleteFramebuffer(f); for (const x of [...this.tex, ...this.P, this.uTex, this.F, ...this.obs]) gl.deleteTexture(x); }
+  clear() { for (const f of [...this.oneFb, ...this.pFb, this.uFb, this.fFb]) { gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.clearBufferfv(gl.COLOR, 0, [0, 0, 0, 0]); } this.steps = 0; }
+  clearObs() {}
+  _bind(pr, unit, name, tex) { gl.activeTexture(gl.TEXTURE0 + unit); gl.bindTexture(gl.TEXTURE_2D, tex); gl.uniform1i(pr.u[name], unit); }
+  step(n, FK, rule) {
+    gl.bindVertexArray(VAO); gl.viewport(0, 0, this.N, this.N);
+    const m = new Float32Array(4), sg = new Float32Array(4).fill(1); rule.kernels.forEach((k, i) => { m[i] = k.m; sg[i] = k.s; });
+    for (let i = 0; i < n; i++) {
+      let pr = PROG.flowU; gl.useProgram(pr.p);
+      this._bind(pr, 0, 'uA', this.tex[this.cur]); this._bind(pr, 1, 'uP', this.P[this.cur]); this._bind(pr, 2, 'uTaps', FK.tex);
+      gl.uniform1i(pr.u.uN, this.N); gl.uniform1i(pr.u.uTapW, TAPW); gl.uniform1i(pr.u.uNTaps, FK.n); gl.uniform1i(pr.u.uRows, FK.rows); gl.uniform1i(pr.u.uNK, FK.nK); gl.uniform1i(pr.u.uWall, this.wall ? 1 : 0);
+      gl.uniform1fv(pr.u['uMk[0]'], m); gl.uniform1fv(pr.u['uSk[0]'], sg);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.uFb); gl.drawArrays(gl.TRIANGLES, 0, 3);
+      pr = PROG.flowF; gl.useProgram(pr.p);
+      this._bind(pr, 0, 'uU', this.uTex); this._bind(pr, 1, 'uA', this.tex[this.cur]); gl.uniform1i(pr.u.uN, this.N); gl.uniform1i(pr.u.uWall, this.wall ? 1 : 0);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fFb); gl.drawArrays(gl.TRIANGLES, 0, 3);
+      pr = PROG.flowRT; gl.useProgram(pr.p);
+      this._bind(pr, 0, 'uA', this.tex[this.cur]); this._bind(pr, 1, 'uFl', this.F); this._bind(pr, 2, 'uP', this.P[this.cur]);
+      gl.uniform1i(pr.u.uN, this.N); gl.uniform1i(pr.u.uWall, this.wall ? 1 : 0); gl.uniform1f(pr.u.uDt, rule.dt); gl.uniform1f(pr.u.uS, rule.sd);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.rtFb[this.cur]); gl.drawArrays(gl.TRIANGLES, 0, 3);
+      this.cur ^= 1; this.steps++;
+    }
+  }
+  paintFlow(mode, o) {     // 0 brush, 1 erase, 2 random square patch; o.h = species parameter vector (4)
+    const pr = PROG.flowPaint; gl.useProgram(pr.p); gl.bindVertexArray(VAO); gl.viewport(0, 0, this.N, this.N);
+    this._bind(pr, 0, 'uA', this.tex[this.cur]); this._bind(pr, 1, 'uP', this.P[this.cur]);
+    gl.uniform1i(pr.u.uN, this.N); gl.uniform1i(pr.u.uMode, mode); gl.uniform1i(pr.u.uWall, this.wall ? 1 : 0);
+    gl.uniform2f(pr.u.uC, o.x, o.y); gl.uniform1f(pr.u.uRad, o.r || 1); gl.uniform1f(pr.u.uAmt, o.amt ?? 1); gl.uniform1f(pr.u.uSeed, o.seed ?? Math.random());
+    const h = o.h || [1, 0, 0, 0]; gl.uniform4f(pr.u.uH, h[0] || 0, h[1] || 0, h[2] || 0, h[3] || 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.rtFb[this.cur]); gl.drawArrays(gl.TRIANGLES, 0, 3); this.cur ^= 1;
+  }
+  setState(A, P) { gl.bindTexture(gl.TEXTURE_2D, this.tex[this.cur]); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, this.N, this.N, gl.RED, gl.FLOAT, A);
+    if (P) { gl.bindTexture(gl.TEXTURE_2D, this.P[this.cur]); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, this.N, this.N, gl.RGBA, gl.FLOAT, P); } this.steps = 0; }
+  _read(fb) { gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.readPixels(0, 0, this.N, this.N, gl.RGBA, gl.FLOAT, this.buf); return this.buf; }
+  read() { const N = this.N, b = this._read(this.oneFb[this.cur]), out = new Float32Array(N * N); for (let i = 0; i < N * N; i++) out[i] = b[i * 4]; return out; }
+  readP() { return this._read(this.pFb[this.cur]).slice(); }
+  readU() { const N = this.N, b = this._read(this.uFb), out = new Float32Array(N * N); for (let i = 0; i < N * N; i++) out[i] = b[i * 4]; return out; }
+  chanMass() { return [0, 0, 0]; }
+}
+/* CPU reference of one Flow Lenia step (tests): same passes, float64 */
+function flowCpuStep(A, P, N, FK, rule, wall) {
+  const msk = N - 1, nK = FK.nK, inside = (x, y) => !wall || (x >= 0 && y >= 0 && x < N && y < N), at = (arr, x, y) => inside(x, y) ? arr[(y & msk) * N + (x & msk)] : 0;
+  const U = new Float64Array(N * N);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const c = new Float64Array(4);
+    for (const [dx, dy, ws] of FK.list) { const qx = x + dx, qy = y + dy; if (!inside(qx, qy)) continue; const a = A[(qy & msk) * N + (qx & msk)]; for (let k = 0; k < nK; k++) c[k] += ws[k] * a; }
+    let u = 0; for (let k = 0; k < nK; k++) { const z = (c[k] - rule.kernels[k].m) / rule.kernels[k].s; u += P[(y * N + x) * 4 + k] * (2 * Math.exp(-0.5 * z * z) - 1); } U[y * N + x] = u; }
+  const Fx = new Float64Array(N * N), Fy = new Float64Array(N * N);
+  const sob = (f, x, y) => [at(f, x + 1, y - 1) + 2 * at(f, x + 1, y) + at(f, x + 1, y + 1) - at(f, x - 1, y - 1) - 2 * at(f, x - 1, y) - at(f, x - 1, y + 1),
+                            at(f, x - 1, y + 1) + 2 * at(f, x, y + 1) + at(f, x + 1, y + 1) - at(f, x - 1, y - 1) - 2 * at(f, x, y - 1) - at(f, x + 1, y - 1)];
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const a = A[y * N + x], al = Math.min(1, Math.max(0, a * a)), gu = sob(U, x, y), ga = sob(A, x, y);
+    Fx[y * N + x] = (1 - al) * gu[0] - al * ga[0]; Fy[y * N + x] = (1 - al) * gu[1] - al * ga[1]; }
+  const sd = rule.sd, ma = FLOW.dd - sd, nA = new Float64Array(N * N), nP = new Float64Array(N * N * 4);
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { let acc = 0; const pa = [0, 0, 0, 0];
+    for (let dy = -FLOW.dd; dy <= FLOW.dd; dy++) for (let dx = -FLOW.dd; dx <= FLOW.dd; dx++) { const qx = x + dx, qy = y + dy; if (!inside(qx, qy)) continue;
+      const j = (qy & msk) * N + (qx & msk), a = A[j]; if (a <= 0) continue;
+      let mx = qx + 0.5 + Math.max(-ma, Math.min(ma, rule.dt * Fx[j])), my = qy + 0.5 + Math.max(-ma, Math.min(ma, rule.dt * Fy[j]));
+      if (wall) { mx = Math.max(sd, Math.min(N - sd, mx)); my = Math.max(sd, Math.min(N - sd, my)); }
+      const ox = Math.max(0, Math.min(Math.min(1, 2 * sd), 0.5 - Math.abs(x + 0.5 - mx) + sd)), oy = Math.max(0, Math.min(Math.min(1, 2 * sd), 0.5 - Math.abs(y + 0.5 - my) + sd));
+      const m = a * ox * oy / (4 * sd * sd); acc += m; for (let k = 0; k < 4; k++) pa[k] += m * P[j * 4 + k]; }
+    nA[y * N + x] = acc; for (let k = 0; k < 4; k++) nP[(y * N + x) * 4 + k] = acc > 1e-12 ? pa[k] / acc : P[(y * N + x) * 4 + k]; }
+  return { A: Float32Array.from(nA), P: Float32Array.from(nP) };
+}
 
 /* ===================== MIXED WORLD =====================
    Different single-channel species in one world: each lives in its own channel with its own kernel
@@ -2134,6 +2287,25 @@ const ECO_SEARCH = async ({ seed, count, fixed, variant, mode }) => {
     const o = solo(0, 70), k = solo(8, 190), e1 = Math.abs(mm[0] / o - 1), e2 = Math.abs(mm[1] / k - 1);
     S.grid = save; S.stampSp = null; loadSpecies(0);
     ok('39. 섞인 세상: 오비움 + 크로니움이 한 세상에서 각자 혼자일 때와 같게 산다 (300스텝)', mixed && e1 < 1e-3 && e2 < 1e-3, `채널 질량 ${mm[0].toFixed(2)} / ${mm[1].toFixed(2)} vs 혼자 ${o.toFixed(2)} / ${k.toFixed(2)} (오차 ${(e1 * 100).toFixed(3)}% / ${(e2 * 100).toFixed(3)}%)`); }
+  // 40. Flow Lenia: GPU == CPU (A and embedded h), torus + wall
+  { const N = 32, rule = { R: 0, dt: 0.2, sd: 0.65, kernels: [{ r: 0.5, m: 0.15, s: 0.02, a: [0.2, 0.5, 0.8], b: [0.6, 1, 0.3], w: [0.05, 0.1, 0.05] }, { r: 0.35, m: 0.3, s: 0.05, a: [0.1, 0.6, 0.9], b: [1, 0.4, 0.7], w: [0.1, 0.03, 0.2] }] };
+    const FK = buildFlowKernel(rule), r = rnd(21), A0 = new Float32Array(N * N), P0 = new Float32Array(N * N * 4);
+    for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) { const i = y * N + x; if (Math.abs(x - 10) < 7 && Math.abs(y - 16) < 7) { A0[i] = r(); P0[i * 4] = 1; P0[i * 4 + 1] = 0.3; } else if (Math.abs(x - 24) < 5 && Math.abs(y - 9) < 5) { A0[i] = r() * 1.5; P0[i * 4] = 0.2; P0[i * 4 + 1] = 1; } }
+    const det = []; let pass = true;
+    for (const wall of [false, true]) { let A = A0, P = P0; for (let i = 0; i < 4; i++) ({ A, P } = flowCpuStep(A, P, N, FK, rule, wall));
+      const w = new FlowWorld(N); tw.push(w); w.wall = wall; w.setState(A0, P0); w.step(4, FK, rule); const dA = maxDiff(A, w.read()), dP = maxDiff(P, w.readP());
+      if (!(dA < 1e-4 && dP < 1e-4)) pass = false; det.push(`${wall ? '벽' : '이어짐'}: A 오차 ${dA.toExponential(1)}, h 오차 ${dP.toExponential(1)}`); }
+    gl.deleteTexture(FK.tex);
+    ok('40. Flow Lenia: GPU = CPU 기준 구현 (질량 A + 칸마다 h, 이어짐/벽)', pass, det.join(' · ') + ` · 탭 ${FK.n}개`); }
+  // 41. Flow Lenia conserves mass (torus + wall, 600 steps) and the soup stays localised
+  { const N = 128, rule = { R: 0, dt: 0.2, sd: 0.65, kernels: [{ r: 0.6, m: 0.2, s: 0.04, a: [0.3, 0.6, 0.9], b: [1, 0.5, 0.2], w: [0.08, 0.08, 0.08] }] }, FK = buildFlowKernel(rule);
+    const det = []; let pass = true;
+    for (const wall of [false, true]) { const w = new FlowWorld(N); tw.push(w); w.wall = wall; w.paintFlow(2, { x: wall ? 8 : 64, y: 64, r: 20, amt: 1, seed: 0.37, h: [1, 0, 0, 0] });
+      const m0 = sum(w.read()); w.step(600, FK, rule); const A = w.read(), m1 = sum(A), err = Math.abs(m1 / m0 - 1);
+      let outside = 0; if (wall) for (let i = 0; i < A.length; i++) if (!isFinite(A[i]) || A[i] < 0) outside++;
+      if (!(err < 1e-4) || outside) pass = false; det.push(`${wall ? '벽' : '이어짐'}: 질량 ${m0.toFixed(2)} → ${m1.toFixed(2)} (변화 ${(err * 100).toExponential(1)}%)`); await tick(); }
+    gl.deleteTexture(FK.tex);
+    ok('41. Flow Lenia: 질량 보존 (600스텝, 이어짐/벽)', pass, det.join(' · ')); }
   } catch (e) { ok('예외 발생', false, String(e && e.stack || e)); }
   for (const w of tw) w.dispose();
   const nPass = out.filter(o => o.pass).length;
