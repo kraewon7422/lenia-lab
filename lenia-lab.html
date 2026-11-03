@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:,">
+<meta name="description" content="Lenia Lab — continuous cellular automata in your browser (WebGL2).">
+<title>Lenia Lab</title>
+<style>
+:root{
+  --bg:#0a0c10; --bg2:#10141a; --panel:rgba(18,22,29,.86); --line:rgba(255,255,255,.08); --line2:rgba(255,255,255,.16);
+  --text:#e7eaf0; --muted:#8a93a3; --dim:#5d6676; --acc:#7cf3c8; --acc2:#62a8ff; --warn:#ffbe76; --bad:#ff6b7d;
+  --mono:ui-monospace,"Cascadia Mono","SF Mono",Consolas,monospace;
+  --r:10px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--text)}
+body{font:14px/1.45 system-ui,-apple-system,"Segoe UI","Malgun Gothic","Apple SD Gothic Neo",sans-serif;word-break:keep-all;overflow-wrap:break-word;-webkit-tap-highlight-color:transparent}
+button,select,input{font:inherit;color:inherit}
+button{cursor:pointer}
+.btn{background:rgba(255,255,255,.05);border:1px solid var(--line2);border-radius:8px;padding:6px 10px;min-height:34px;white-space:nowrap;transition:background .15s,border-color .15s}
+.btn:hover{background:rgba(255,255,255,.1)}
+.btn:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--acc2);outline-offset:1px}
+.btn.pri{background:var(--acc);color:#05231a;border-color:transparent;font-weight:700;min-width:44px}
+.btn.pri:hover{background:#a2f7da}
+.btn.on{background:rgba(124,243,200,.16);border-color:var(--acc);color:var(--acc)}
+.btn.icon{min-width:34px;padding:6px 8px}
+select{background:var(--bg2);border:1px solid var(--line2);border-radius:8px;padding:5px 8px;min-height:34px}
+
+#app{display:grid;height:100vh;height:100dvh;grid-template-columns:256px minmax(0,1fr) 292px;grid-template-rows:auto minmax(0,1fr) auto;
+  grid-template-areas:"top top top" "left stage right" "bottom bottom bottom"}
+header{grid-area:top;display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--bg2);flex-wrap:wrap}
+.brand{font-weight:800;letter-spacing:.14em;font-size:15px;white-space:nowrap}
+.brand b{color:var(--acc);font-weight:800}
+.ctrl{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hright{margin-left:auto;display:flex;gap:6px;align-items:center}
+.speed{display:flex;align-items:center;gap:6px;color:var(--muted);white-space:nowrap}
+.speed input{width:92px}
+.speed output{font-family:var(--mono);color:var(--text);min-width:4.5em;font-size:12px;flex:0 0 auto;white-space:nowrap}
+
+.panel{background:var(--panel);overflow:auto;padding:12px}
+#left{grid-area:left;border-right:1px solid var(--line)}
+#right{grid-area:right;border-left:1px solid var(--line)}
+h2{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:2px 0 10px;font-weight:700}
+h2 .sub{letter-spacing:0;text-transform:none;font-weight:400;color:var(--dim);margin-left:6px}
+section+section{margin-top:18px}
+
+#gallery{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.card{background:rgba(255,255,255,.03);border:1px solid var(--line);border-radius:var(--r);padding:6px;text-align:left;display:flex;flex-direction:column;gap:4px;min-width:0}
+.card:hover{border-color:var(--line2)}
+.card.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+.card canvas{width:100%;aspect-ratio:1;border-radius:6px;display:block;background:#000}
+.card .nm{font-size:12px;font-weight:600;line-height:1.25}
+.card .lt{font-size:10.5px;color:var(--muted);font-style:italic;line-height:1.2}
+.card .kbd{float:right;font-style:normal;color:var(--dim);font-family:var(--mono)}
+
+#stage{grid-area:stage;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#05070a;min-height:0}
+#cv{display:block;touch-action:none;cursor:crosshair;image-rendering:auto}
+#info{position:absolute;left:12px;top:12px;max-width:min(360px,calc(100% - 24px));background:rgba(8,10,14,.72);border:1px solid var(--line);border-radius:var(--r);padding:8px 11px;backdrop-filter:blur(6px);pointer-events:auto;cursor:pointer}
+#info .t{font-weight:700}
+#info .t i{font-weight:400;color:var(--muted);margin-left:6px;font-size:12px}
+#info .d{color:#c5ccd8;font-size:12.5px;margin-top:2px}
+#info.min .d{display:none}
+#badge{position:absolute;left:50%;bottom:16px;transform:translateX(-50%);background:rgba(20,10,14,.82);border:1px solid var(--bad);color:#ffd0d6;border-radius:14px;padding:6px 14px;font-size:13px;display:none;width:max-content;max-width:calc(100% - 24px);text-align:center;backdrop-filter:blur(6px)}
+#badge.warn{background:rgba(24,18,8,.82);border-color:var(--warn);color:#ffe4c4}
+#viewBtns{position:absolute;right:12px;top:12px;display:flex;flex-direction:column;gap:6px}
+#viewBtns .btn{background:rgba(8,10,14,.72);backdrop-filter:blur(6px)}
+#toast{position:absolute;left:50%;top:14px;transform:translateX(-50%) translateY(-8px);background:#1c2430;border:1px solid var(--line2);border-radius:8px;padding:6px 12px;opacity:0;transition:.2s;pointer-events:none;white-space:nowrap;font-size:13px}
+#toast.on{opacity:1;transform:translateX(-50%)}
+
+.prow{display:grid;grid-template-columns:30px minmax(0,1fr) 70px;align-items:center;gap:8px;margin:6px 0}
+.prow label{font-family:var(--mono);color:var(--muted);font-size:13px}
+.prow input[type=number]{-moz-appearance:textfield;appearance:textfield;width:100%;background:var(--bg2);border:1px solid var(--line);border-radius:6px;padding:4px 5px;font-family:var(--mono);font-size:12px;text-align:right}
+.prow input[type=number]::-webkit-inner-spin-button,.prow input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+.rw{position:relative;height:22px;display:flex;align-items:center}
+.rw input{width:100%;margin:0}
+.rw .tick{position:absolute;top:-1px;width:2px;height:6px;background:var(--acc);border-radius:1px;transform:translateX(-1px);opacity:.85;pointer-events:none}
+input[type=range]{accent-color:var(--acc);height:22px}
+.hint{color:var(--dim);font-size:11.5px;margin:2px 0 0}
+.seg{display:flex;gap:4px;flex-wrap:wrap}
+.seg .btn{flex:1 1 0;min-width:0;padding:5px 6px;font-size:12.5px}
+.rings{display:flex;flex-direction:column;gap:2px}
+.subh{display:flex;align-items:center;justify-content:space-between;gap:6px;margin:12px 0 4px;color:var(--muted);font-size:12.5px}
+.subh .btn{min-height:28px;padding:2px 8px}
+.row2{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap}
+.row2 .btn{flex:1 1 auto}
+
+.gbox{background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:8px;padding:6px 8px 8px;margin-top:8px}
+.gbox .gt{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
+.gbox .gt span:last-child{font-family:var(--mono);color:var(--dim);white-space:nowrap}
+.gbox canvas{width:100%;height:96px;display:block;margin-top:4px}
+.kwrap{display:grid;grid-template-columns:70px minmax(0,1fr);gap:8px;align-items:center}
+.kwrap canvas.k2{width:70px;height:70px;border-radius:6px;margin:0}
+
+footer{grid-area:bottom;display:flex;align-items:center;gap:14px;padding:8px 14px;border-top:1px solid var(--line);background:var(--bg2);flex-wrap:wrap}
+.tools{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.tools .lab{color:var(--muted);font-size:12.5px;margin-right:2px;white-space:nowrap}
+#toolSeg .btn{flex:0 0 auto}
+.tools input[type=range]{width:110px}
+.tools output{font-family:var(--mono);font-size:12px;min-width:2.5em}
+.stats{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--muted);display:flex;gap:14px;flex-wrap:wrap}
+.stats b{color:var(--text);font-weight:500}
+
+#tabs{display:none}
+#overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:20;padding:16px}
+#overlay.on{display:flex}
+#overlay .box{background:#121821;border:1px solid var(--line2);border-radius:14px;max-width:620px;width:100%;max-height:calc(100dvh - 32px);overflow:auto;padding:20px 22px;position:relative}
+#overlay h3{margin:0 0 10px;font-size:18px}
+#overlay h4{margin:16px 0 6px;color:var(--acc);font-size:14px}
+#overlay p,#overlay li{color:#c9d0db;font-size:13.5px}
+#overlay .close{position:absolute;right:10px;top:10px}
+#overlay table{border-collapse:collapse;font-size:13px;width:100%}
+#overlay td{padding:3px 6px;border-bottom:1px solid var(--line)}
+#overlay td:first-child{font-family:var(--mono);color:var(--acc);white-space:nowrap;width:1%}
+kbd{font-family:var(--mono);background:rgba(255,255,255,.08);border:1px solid var(--line2);border-radius:4px;padding:0 4px;font-size:12px}
+.math{font-family:var(--mono);background:rgba(255,255,255,.04);border-radius:6px;padding:8px 10px;color:#dfe6ef;font-size:12.5px;white-space:pre-wrap}
+
+#testOut{position:fixed;inset:16px;z-index:30;background:#0e131a;border:1px solid var(--line2);border-radius:12px;overflow:auto;padding:16px 18px;display:none;font-size:13px}
+#testOut .pass{color:#9ff0c9;margin:6px 0}
+#testOut .fail{color:#ff9aa8;margin:6px 0}
+#nogl{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;color:#ffd0d6}
+
+/* ---------- phone / small tablet ---------- */
+@media (max-width:899px){
+  #app{height:auto;min-height:100dvh;grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto auto auto 1fr;align-content:start;
+    grid-template-areas:"top" "stage" "stats" "tabs" "panel"}
+  header{padding:8px 10px;gap:8px}
+  .hright{margin-left:auto}
+  .ctrl{order:3;width:100%;justify-content:space-between}
+  .speed input{width:auto;flex:1;min-width:60px}
+  .speed{flex:1;min-width:0}
+  #stage{aspect-ratio:1;width:100%;max-height:72vh}
+  footer,#right{display:contents}
+  .stats{grid-area:stats;margin:0;padding:6px 10px;justify-content:space-between;border-bottom:1px solid var(--line);background:var(--bg2);gap:8px}
+  #tabs{grid-area:tabs;display:flex;gap:4px;padding:6px 8px;background:var(--bg2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+  #tabs .btn{flex:1 1 0;min-width:0;padding:6px 4px}
+  #left,#right>section,.tools{grid-area:panel;display:none}
+  #left,#right>section{border:0;padding:12px;background:transparent;overflow:visible}
+  .tools{padding:12px;gap:8px}
+  body[data-tab=species] #left{display:block}
+  body[data-tab=params] #secParams{display:block}
+  body[data-tab=graphs] #secGraphs{display:block}
+  body[data-tab=brush] .tools{display:flex}
+  #right>section+section{margin-top:0}
+  #gallery{grid-template-columns:repeat(auto-fill,minmax(108px,1fr))}
+  .tools input[type=range]{flex:1;min-width:90px}
+  #info{left:8px;top:8px;padding:6px 9px;max-width:calc(100% - 66px)}
+  .speed output{min-width:3.4em}
+  #viewBtns{right:8px;top:8px}
+}
+@media (max-width:420px){
+  .brand{font-size:14px}
+  .stats{font-size:11px}
+  #hSpeedLab{display:none}
+}
+</style>
+</head>
+<body data-tab="species">
+<div id="app">
+  <header>
+    <div class="brand">LENIA <b>LAB</b></div>
+    <div class="ctrl">
+      <button class="btn pri" id="playBtn" aria-label="play/pause">❚❚</button>
+      <button class="btn icon" id="stepBtn" data-i18n-title="stepT">⏭</button>
+      <label class="speed"><span id="hSpeedLab" data-i18n="speed">속도</span><input type="range" id="speed" min="0" max="7" step="1" value="4"><output id="speedOut"></output></label>
+      <button class="btn" id="resetBtn" data-i18n="reset">⟲ 다시</button>
+      <button class="btn" id="clearBtn" data-i18n="clear">비우기</button>
+    </div>
+    <div class="hright">
+      <select id="gridSel" data-i18n-title="gridT"><option value="128">128²</option><option value="256" selected>256²</option><option value="512">512²</option></select>
+      <select id="cmapSel" data-i18n-title="cmapT"></select>
+      <button class="btn" id="langBtn">EN</button>
+      <button class="btn icon" id="helpBtn" aria-label="help">?</button>
+    </div>
+  </header>
+
+  <aside id="left" class="panel">
+    <h2><span data-i18n="species">생물 도감</span><span class="sub" data-i18n="speciesSub">눌러서 불러오기</span></h2>
+    <div id="gallery"></div>
+    <p class="hint" style="margin-top:10px" data-i18n="credit">생물 데이터: Bert Chan, Lenia (MIT)</p>
+  </aside>
+
+  <main id="stage">
+    <canvas id="cv"></canvas>
+    <div id="info" title=""><div class="t" id="infoT"></div><div class="d" id="infoD"></div></div>
+    <div id="viewBtns">
+      <button class="btn icon" id="zin" aria-label="zoom in">+</button>
+      <button class="btn icon" id="zout" aria-label="zoom out">−</button>
+      <button class="btn icon" id="zfit" data-i18n-title="fitT">⤢</button>
+      <button class="btn icon on" id="followBtn" data-i18n-title="followT">◎</button>
+    </div>
+    <div id="badge"></div>
+    <div id="toast"></div>
+    <div id="nogl"></div>
+  </main>
+
+  <aside id="right" class="panel">
+    <section id="secParams">
+      <h2><span data-i18n="params">파라미터</span><span class="sub" data-i18n="paramsSub">초록 눈금 = 원래 값</span></h2>
+      <div id="prows"></div>
+      <div class="subh"><span data-i18n="rings">커널 고리 β</span><span><button class="btn icon" id="ringMinus" aria-label="-">−</button> <button class="btn icon" id="ringPlus" aria-label="+">+</button></span></div>
+      <div class="rings" id="rings"></div>
+      <div class="subh"><span data-i18n="kshape">커널 모양</span></div>
+      <div class="seg" id="knSeg"><button class="btn" data-v="1" data-i18n="poly">다항식</button><button class="btn" data-v="2" data-i18n="bump">지수 봉우리</button></div>
+      <div class="subh"><span data-i18n="gshape">성장 함수</span></div>
+      <div class="seg" id="gnSeg"><button class="btn" data-v="1" data-i18n="poly">다항식</button><button class="btn" data-v="2" data-i18n="gauss">가우스</button></div>
+      <div class="row2">
+        <button class="btn" id="restoreBtn" data-i18n="restore">원래 값으로</button>
+        <button class="btn" id="linkBtn" data-i18n="link">링크 복사</button>
+        <button class="btn" id="pngBtn" data-i18n="png">PNG 저장</button>
+      </div>
+    </section>
+    <section id="secGraphs">
+      <h2><span data-i18n="graphs">그래프</span></h2>
+      <div class="gbox"><div class="gt"><span data-i18n="gK">커널 K — 이웃을 얼마나 보나</span><span id="gKv"></span></div>
+        <div class="kwrap"><canvas class="k2" id="gK2"></canvas><canvas id="gK"></canvas></div></div>
+      <div class="gbox"><div class="gt"><span data-i18n="gG">성장 G(U) + 지금 U 분포</span><span id="gGv"></span></div><canvas id="gG"></canvas>
+        <p class="hint" data-i18n="gGhint">초록 구간(G&gt;0)에 있는 칸은 자라고, 밖은 줄어들어요.</p></div>
+      <div class="gbox"><div class="gt"><span data-i18n="gM">질량 변화</span><span id="gMv"></span></div><canvas id="gM"></canvas></div>
+      <div class="subh"><span data-i18n="viewMode">화면에 보기</span></div>
+      <div class="seg" id="viewSeg"><button class="btn" data-v="A" data-i18n="vA">생물 A</button><button class="btn" data-v="U" data-i18n="vU">이웃 밀도 U</button><button class="btn" data-v="G" data-i18n="vG">성장 G</button></div>
+    </section>
+  </aside>
+
+  <footer>
+    <div class="tools">
+      <span class="lab" data-i18n="brush">붓</span>
+      <div class="seg" id="toolSeg" style="flex:0 1 auto">
+        <button class="btn" data-v="draw" data-i18n="tDraw">그리기</button>
+        <button class="btn" data-v="erase" data-i18n="tErase">지우기</button>
+        <button class="btn" data-v="stamp" data-i18n="tStamp">생물 찍기</button>
+        <button class="btn" data-v="soup" data-i18n="tSoup">무작위 수프</button>
+      </div>
+      <span class="lab" data-i18n="size">크기</span><input type="range" id="brushSize" min="2" max="64" value="14"><output id="brushOut"></output>
+      <span class="hint" id="toolHint"></span>
+    </div>
+    <div class="stats">
+      <span><span data-i18n="mass">질량</span> <b id="sMass">—</b></span>
+      <span><span data-i18n="vel">속도</span> <b id="sVel">—</b></span>
+      <span>t <b id="sT">0</b></span>
+      <span><b id="sFps">—</b> fps</span>
+    </div>
+  </footer>
+
+  <nav id="tabs">
+    <button class="btn" data-tab="species" data-i18n="species">생물 도감</button>
+    <button class="btn" data-tab="params" data-i18n="params">파라미터</button>
+    <button class="btn" data-tab="graphs" data-i18n="graphs">그래프</button>
+    <button class="btn" data-tab="brush" data-i18n="brush">붓</button>
+  </nav>
+</div>
+
+<div id="overlay" role="dialog" aria-modal="true"><div class="box"><button class="btn icon close" id="ovClose" aria-label="close">✕</button><div id="ovBody"></div></div></div>
+<div id="testOut"></div>
+
+<script>
+/* ===================== SPECIES DATA (Bert Chan, Lenia, MIT — github.com/Chakazul/Lenia) ===================== */
+const SPECIES = /*SPECIES_DATA*/[{"name":"Orbium unicaudatus","code":"O2u","R":13,"T":10,"b":"1","m":0.15,"s":0.015,"h":20,"w":20,"sum":76.8627,"speed":6.245,"mass300":0.961,"cells":"7.MD6.qL$6.pKqEqFURpApBRAqQ$5.VqTrSsBrOpXpWpTpWpUpCrQ$4.CQrQsTsWsApITNPpGqGvL$3.IpIpWrOsGsBqXpJ4.LsFrL$A.DpKpSpJpDqOqUqSqE5.ExD$qL.pBpTT2.qCrGrVrWqM5.sTpP$.pGpWpD3.qUsMtItQtJ6.tL$.uFqGH3.pXtOuR2vFsK5.sM$.tUqL4.GuNwAwVxBwNpC4.qXpA$2.uH5.vBxGyEyMyHtW4.qIpL$2.wV5.tIyG3yOxQqW2.FqHpJ$2.tUS4.rM2yOyJyOyHtVpPMpFqNV$2.HsR4.pUxAyOxLxDxEuVrMqBqGqKJ$3.sLpE3.pEuNxHwRwGvUuLsHrCqTpR$3.TrMS2.pFsLvDvPvEuPtNsGrGqIP$4.pRqRpNpFpTrNtGtVtStGsMrNqNpF$5.pMqKqLqRrIsCsLsIrTrFqJpHE$6.RpSqJqPqVqWqRqKpRXE$8.OpBpIpJpFTK!","ko":{"name":"오비움","desc":"Lenia의 대표 생물. 둥근 몸에 꼬리 하나를 달고 한 방향으로 꾸준히 헤엄쳐요."},"en":{"name":"Orbium","desc":"The iconic Lenia creature: a round body with one tail, swimming steadily in one direction."}},
+{"name":"Orbium bicaudatus","code":"O2b","R":13,"T":10,"b":"1","m":0.15,"s":0.014,"h":20,"w":20,"sum":71.4588,"speed":6.034,"mass300":1.004,"cells":"13.pK$14.qV$6.VpA.MpEpKpITqV$4.BpPpNrIrEqDpWpOpLpUqNvT$4.IqRrNsPsKqHJ3.GqOuC$4.TrLsTrPrLpS6.uUD$3.SpWqNrBqLpRqPqE6.vA$2.FpTpMLpHqPqHrVsPrS5.qUqA$K.pCpRG.ErFsRsVuSuPqN4.CrR$pA.pTU3.rWuBuRvXwTwKpF4.rCH$.tPqHH3.qFvAwUwVyJyKwNL2.DqLR$.pGsGA4.vPxSyDxE2yOuHS.XqJT$2.xIE4.sCyHyOvLvRyFxCsGpVpXqGP$2.VsU4.DxQyOvVuSwDwQuBrMqSqCF$3.vG5.tEyKwVvIvKvMtVrXqTpM$4.sU4.qFvDwMvNuUuDsUrKqDO$4.qCrDJ2.pPsKuGuHtOsQrNqKpC$5.pTqTpVpNqFrJsGsKrVrDqFpFD$6.QqCqJqPqVqXqRqHpOTC$8.LWpFpEXPG!","ko":{"name":"두꼬리 오비움","desc":"오비움과 규칙이 거의 같은데(σ만 0.014) 꼬리가 둘이에요. 아주 작은 차이가 다른 종을 만들어요."},"en":{"name":"Two-tailed Orbium","desc":"Almost the same rule as Orbium (only σ = 0.014), yet it grows two tails. A tiny change makes a new species."}},
+{"name":"Synorbium solidus","code":"O4s","R":13,"T":10,"b":"1","m":0.122,"s":0.0106,"h":28,"w":34,"sum":116.6235,"speed":6.407,"mass300":1.003,"cells":"23.OTVM.qF$18.qHK.pCpDpLpIpApJpRXqN$18.qHsGpKqGqMX4.pLsO$18.OtUsLqLqHA5.RwN$19.uEvVrJRO6.LrS$17.KpHrFwGsV.pBpS6.uC$13.AIVpDpIpPpMsXuLqIqCsHqQ6.rU$12.GpBpKpAUNE2.tCuArUtOuApO5.rI$6.pV4.GpBpAE6.rWvGtUtDwBvOG4.pQpG$6.sDrJ2.IpEpA9.vRwOtWvBxVvF4.pEpR$4.AGrFuEsKWpKpH10.uJyHvEtKwSyOtK3.pFpQ$4.DqDqOuLvPpWpMI10.GyOwUsFtFxKxErPWVpTpI$3.QpIqQqAsDwDtSN12.vNyOtWsTuVwNtXqWqBqFR$2.VpKpAUWpAsEtWG12.pNxLwGuCuFuWtVrTqTpUC$.CpKN2.TEpJuCsV13.tIvVuWtXtLsPrNqLV$.OpC3.pDrCpXsPvCsL12.qLtOtTtAsErLqNpIC$VUT4.rVsHsJwEwOX11.pQrOsCrPqVqFpGH$pLpBQ4.sGuRtNvFyOyD10.TpXqOqRqGpMTE$.uCU4.PvHwFuTwDyOvE7.BpApMpRpLpBOF$.qDpQ5.uPyKuSsPwByJrH5.RpIpANA$2.wF5.qUyOwAsGtKwMuXpQ2.LpEpAC$2.qQA5.xFxOtLtCuUvCsEqEpSpRW$3.uE5.tBxBvBtOtUtVsLrCqFV$3.MrG4.qMuRuVtStBsMrNqLpD$4.pXqKE.CpXsLtJsPrTrBqFpDB$5.pHqKpWpSqLrHrOrDqKpPTB$6.DpKpVqFqGqApMXJ$9.EHGC!","ko":{"name":"시노르비움","desc":"오비움 둘이 나란히 붙은 듯한 길쭉한 몸으로 함께 헤엄쳐요."},"en":{"name":"Synorbium","desc":"A long body like two Orbia joined side by side, swimming together."}},
+{"name":"Gyrorbium gyrans","code":"OG2g","R":13,"T":10,"b":"1","m":0.156,"s":0.0224,"h":23,"w":21,"sum":95.0275,"speed":0.035,"mass300":1.053,"cells":"10.EL2QLE$7.TpU2qHqCpXpUpNpFL$4.JrVtTuKuPuKtLrXqTqHqCpPpDG$3.qWtDqRpKqEsMuXvBtGrApXpUpSpIO$2.rQrN4.pAuAvRtTrIpUpIpKpFO$.pSsM6.tJwFuNsPsFrVpPpDL$.uFB6.tJ2yO2yLyOyDsKL$pDuC6.pFxW3yOwIwD2xPqH$rNtV5.EsMxCyIyOwXtJsMtJwFuX$sHuSV3.EpDvOwFxEwQsRqR2qHsFvWE$rQvJsWpPQpKpSqCvEvBuCpD3.BpDtGrQ$pXuKvMuPtLsWsCrIuCtBrS6.qWrQ$EsKvEwXyBwLtVrVsCrDqH6.pXrG$.qHtVxJyOwQrQpNqJpPV6.qJqE$.JsUxMyOrX10.pFqRJ$2.rQxPwIpI9.pKqJT$2.qJxEuPpKB7.qCpP$2.EvOvMpPO5.TrGqH$3.sCyOqEpIOEBOqHqEsRtG$4.xMsMqJqCpXqJqRpIqOuCtBsF$5.xPrAqTqMpSE.rSsMrLqRqHV.TpS$6.vErDE2.VpPB$7.pIrNqHpKQ!","ko":{"name":"자이로비움","desc":"오비움의 친척이지만 앞으로 나아가지 않고 제자리에서 빙글빙글 돌아요."},"en":{"name":"Gyrorbium","desc":"A relative of Orbium that doesn't travel — it spins in place."}},
+{"name":"Scutium solidus","code":"S1s","R":13,"T":10,"b":"1","m":0.29,"s":0.045,"h":20,"w":18,"sum":139.7686,"speed":3.557,"mass300":0.999,"cells":"5.pGQ$6.sUsDqRR$4.VpXrJwKvNtXrW$2.ApVrGrWsIwKyOyDwTuNO$2.qArOrIqIpPpTxH2yOyIvKqG$rVpIrNrJpH4.xP3yOvFqWA$sKvNsKqE5.pI4yOuHqPC$sNxBuMpD5.JuN3yOwXsUpN$sGxFyOT5.pCtIyF3yOuKqUH$rPwXyOxT5.qKtSxS3yOvIrQT$pQwK2yOtWXJXqHsGuWxW3yOvPsApC$.vQ3yOuVsLsGsXuMwOyK3yOvHrVpC$.rKyK3yOxEwBwCwXyE3yOxQuMrJU$.WvC5yOyM5yOwFtJqOL$2.rVwO9yOwWuMsApOC$2.pLtBwK6yOyJwQuTsQqLP$3.qHsWvEwUxTyCxRwWvRuGsNqSpA$3.HqBrUtHuGuPuLtVsXrSqIXB$4.DpDqEqW2rIqWqGpJN$6.ENTUPHA!","ko":{"name":"스쿠티움","desc":"작고 두꺼운 방패 모양. μ가 0.29라서 오비움보다 훨씬 빽빽한 이웃을 좋아해요."},"en":{"name":"Scutium","desc":"A small, thick shield. With μ = 0.29 it prefers far denser neighborhoods than Orbium."}},
+{"name":"Discutium solidus","code":"S2s","R":13,"T":10,"b":"1","m":0.356,"s":0.063,"h":25,"w":29,"sum":273.502,"speed":4.137,"mass300":1.0,"cells":"8.AEG2JHFB$6.HUpKpWqGqKqLqHpXpOpCOE$4.FpCqGrGsCsQtBtEtDsUsMrXrIqNpRVF$3.MqArPtDuHvDvPvUvVvSvMvAuMtTsWrWqUpRQA$2.MqMsSuSwIxKyDyKyMyKyFxUxKwUwCvGuGtCrTqKpBD$.DqKtHvWyC10yOyHxLwLvHtXsMqUpHE$.pMsWwG14yOyMxJwBuOsVrBpHD$.rLvM6yOyLyDyByGyL6yOyAwOuVsXqVX$VtMxS5yOyGwR2vXwJxCxTyI5yOyLwTuUsOqHM$qGvDyM5yOvWtRtDtHtWuTvSwRxNyEyN4yOwRuJrUpKB$rKwFxXyK3yOxRsJqNqIqSrMsJtIuIvHwIxJyH3yOyMwDtJqOL$sCwLwWxU3yOuRT2.GpBqAqXrXsXuBvIwWyH3yOxTuVrSpB$sHuSvLxAyK2yOrO6.OpOqPrTtFvDxJ4yOwGsUpRA$rXsStVvVxW2yOpO8.IpOrEtJwM4yOxLtSqGC$qBqQsFuPxByLxWqWV9.pFrWwD4yOyJuIqOD$.NqOtGvTxPuLsDqUpKJ8.rDxD5yOuOqOB$2.WrRuFwDrP2rTrHqLpJL6.sK6yOuIqE$3.qBsIrPpKqAqOrBrIrFqOpTXJCBKxI5yOxXtMpI$3.HqJ3.HpBpVqQrGrKrEqQqHqGuE4yOyMyNwNsBB$11.NpNqLrFrTsDsO2yOyNyE2xSyCuLqA$13.GpLqNrPuKyDxUxDwJwCwLvUrV$15.NpTwDwCvMuPtXuCvAsVS$16.GtNtIsPrTrLsDsTpL$16.pEqSqIpNVpBqFpH$16.A5.G!","ko":{"name":"디스쿠티움","desc":"스쿠티움보다 크고 넓적한 초승달 모양으로 헤엄쳐요."},"en":{"name":"Discutium","desc":"A bigger, wider crescent than Scutium, swimming forward."}},
+{"name":"Paraptera arcus labens","code":"P4al","R":13,"T":10,"b":"1","m":0.347,"s":0.057,"h":40,"w":43,"sum":435.0392,"speed":4.586,"mass300":1.0,"cells":"10.C2DC$7.KpBpOpXqDqCpUpMpAMD$5.JpOqVrWsQtAtBsVsMrXrGqMpPTE$4.TqTsUuLvLvXwAvSvIuUuFtOsSrTqRpOPA$3.SrPuKwSyH2yOyJxRxEwPwDvNuTtUsSrMqGpCH$3.rOvFyJ6yOyMyGxXxLwRvTuQtLsEqWpRQA$2.qMuU13yOxRwNvHuCsUrOqGpCG$.JtGxX6yO2yDyL5yOyGxAvTuPtKsDqVpON$.qOvQxQyM4yOwRwBwMxLyI5yOyHxBvXuWtWsSrKqBVD$.sMvLwXyI3yOvNtJtLuLvUxGyH4yOyLxHwLvVvHuKtFrWqMpFG$VsOuHwIyF2yOwKrFqJrGsOuCvRxAxTyCyBxWwUwCvXwDwEvSuXtSsHqUpMJ$pLrCtHvUyB2yOrL.BpIqUsLtVvCvRvTvNuNtTtUuOvSwRxBwOvLuCsPrDpRN$.pXsOvKxTyOvJK3.pEqQrWsRsVsPrSqVqTrOtCvFxGyJyExEvVuJsWrKpVP$.pDsAuVxIyDrSpF4.SpQpWpQW2.JpTsAuWxX3yOxNwCuPtDrOqAQ$.MrKuDwNsUrUqMpAD10.NrLvGxV4yOxNwBuRtFrQqBR$2.qRtEqUqMrJrNqWqDpKpBMC7.rQvHxR4yOyIxAvTuPtFrRqAQ$2.pSK.RpWqUrJrNrOrHqSpRN6.sFvPxRyKyN2yOxWwXwHvOuPtGrQqAQ$7.UpPqGqRrCrHrEqKpFH3.pXtXwRxSxUxOxHwUwAvUwBwDvRuRtGrPpXP$10.FUpOqMrCrAqKpVpNqTuTxPyJxPwGvDuLtMtJuDvIwKwRwBuTtFrOpVM$13.QpUqSrFrMsEwO3yOwQtKrUqOqIrBsLuOwRxSxKwHuUtDrLpRH$15.SpOqEuTxUyI2yOuPpW3.pDrHuDxF2yOxUwHuRtArDpHB$17.rCuWvRwXyHyGrT5.qOuFxT3yOxUwDuJsOqPS$17.rTsMtSvLxMvBpW5.qNuRxN4yOxKvQtVrWpSD$16.FpIqLsDuGtVrOqMG4.rAuKxF4yOyMwQuXtBqTQ$18.TqUrFpHqXrDpD4.qWuAwNyD4yOxLvUuBrTpI$19.K2.qArFqJN3.qNtHvJwXyC3yOyDwQuXsQpXD$22.TqLrBqDM2.pWsDtUvHwPxTyM2yOxLvTtKqNH$23.pCqQrDqBI.VqPsCtMuVwKxV2yOyHwPuArAM$24.pJrDrFpH2.VqHrQtFvExI3yOxJuMrEO$24.DqGrPqIF2.KpXrWuLxJ3yOxXuPrDM$25.pIrJrDV3.NrEvAyL3yOyGuLqSH$25.JqQrNqCJ2.FsQxX4yOxVtTqCB$26.pQrHrFpWUJrWyI5yOwTsOpE$26.KqIrMrNrDtN7yOuXqWF$27.pAqPrTuF7yOwQsMpA$28.pCrNxMxSxTxRxPxSyCxGtIpQ$29.uHvD3vJvOwFwOtFpQ$28.qDsBsIsKsLsStMuPrXV$28.WpHpKpLpRqKrQqA$33.L!","ko":{"name":"파랍테라","desc":"아치 모양 날개를 펼친 채 미끄러지듯 나아가요."},"en":{"name":"Paraptera","desc":"Glides along with arch-shaped wings spread out."}},
+{"name":"Pentaurium brevis","code":"3U5b","R":13,"T":10,"b":"3/4,1,1","m":0.333,"s":0.0409,"h":62,"w":69,"sum":1283.4353,"speed":3.231,"mass300":1.002,"cells":"15.BEFDA$11.BMpCpKpNpLpDOA$9.BpFqQrUsPsWsQsBrFqDUA$8.pFrOtQvOxAxTxWxNwUvTuIsOrDqHqBqApSpGOB$6.BrKuUxK8yOyMwTvGuDtGsKrLqGpBF$6.sPxU15yOxMwFuPsUrJqIpNVG$5.sA20yOxNwHvIuNtPsEqIQ$4.qP20yOyFxNxDwUwQwKvRuJsMqHO$4.xX24yOyFxWxHwJvItUrNpFA$3.uO8yOyLxRxOyF12yO2yB2yOyFxOwQuWsDpJA$3.yG7yOxJvIuHuQvXwWxFxHxNxUyByCwUvJtRsErMrUtGvRyI3yOxJuOrTpQJ$2.tPxJ6yOwLsVrGrBrUsTsXsJsItLtVtArWrBpWL.IpQrEtIwM3yOyNuTsHrCqBpAC$2.vAxO5yOxJrMpAGBKP3.XpIVXpPqEpGpDqXtMvRxR5yOxSuEsLrRqXpPC$.rXvGyM5yOqX15.ApFsQwAyI8yOxMvDtIsFqMK$.rEwAyN4yOrW18.HsFvNyM8yOxNuVsNrPqPT$.qOvQyI3yOyL20.qAsEvJ7yOwRwMwKtErPrNqQN$.qAuSyE3yOC19.qGtUvDwPyH6yOxWuRwIwWuPtRtAqN$.pRuXyI2yOtW20.rTwNyN4yOyK4yOsQqKsHvSvRuTuCqMB$.qPwDyJ2yOpE21.rWwS5yOuPuSyKxWsMC.qPuTuGuMvFrUpITC$.sAwCyCyOvLpMA21.qAwR4yOxAqXqBtCsUpG.pFvKvDuLwBwStQrKpH$.rKuMyDyOuMqHN9.pRpNPC8.VqWvN4yOsE2.WI2.vPxHwHxNyOxLuLrQQ.A$.pEtX2yOsRqQW8.sUtXsLqOpDB5.qEwK2yOuJ.VwQyOsQ6.pPyE4yOxAuOrM2pHpDF$.KvVyOvVtFsNpJ7.sCxVvCtSsLqUU6.yK3yOsL3.pA7.tCyI3yOyExEvTtGrUrCpQH$.qJyCyOyCxJvBpV7.yOxHvBuGtXtDqUpJJ5.pR3yO10.KuKxN3yOxP2yOxXvKtIrGpNH$.uKyN3yOwRpP2.A3.2yOxKvWuFuJvHuEtMtAqNJ5.pDyOsF7.PrHyJ9yOyAvStEqVpND$.vXxUyCyKyOvPpGGE3.tI3yOxGtUuExDvIuNuHrLWsM2yO13.pQ10yOyIwUvKsRqTpH$pWuIvDwByIyOuFqMpTP3.yI4yOwKwVyOuNsJsDR2.3yO13.rM10yOwKwNvKsKqMQ$pIqTrSuSyHyOwXuNsVS2.vUyIxPxHyE5yOwBwJrU3.3yOS9.tEtNrGvB5yOyG3yOvXvRxDuWrOpXE$2.pGuFyD3yOuPB.wKyHwJuJvSwS9yO4.sCrQO8.3yOyJyN4yOwMxH2yOvUuIwLxHtBrEpO$3.uBxU3yOrF.sDyNxTsOrUvKxBxPxO8yO4.BTKA6.qW3yOyKxP3yOwKtMuRxTwEtVvGyNuVsJrOT$3.tQwWyEyOxOqTWyNyGsFEqAuSwKtXtVxE2yOuT2.3yOwT4.C8.uB3yOvDtXxHyOwUrSRtDwJuPuRyOxGtUtNrFB$2.DsFuXwWyLxAtN2yOtK2.pLsSsErAsHwO2yOyA3.4yOtNF6.rAxBpO2.uEyNyOvJpUqOwEvTqJ.BvSvVuT2yOvWvItVpB$3.qCsNvExXxV3yO3.pV2.pXuBwTxTyEyIyCuL3.xJyOxCrG.CJ4.3yO2.qQwTvCpI.RrJS2.uFwRuVxUyOyNxAvXqSC$3.EqNtVwUxW2yOpM2.pS3.rSyMvVU.wD2yOxA7.LqUqKH3.3yO3.rQX6.sFwCvGxQ3yOxQsPK$4.pKsDvDyIyOtXqFRQI3.tGyNtJ3.xA2yOxWrE7.vDxQrK3.2yO11.qFvHwL5yOuNpDCDE$5.pOtIxHyMuStKsHqGF3.pXrXpK5.xD3yOtOHrTsO3.3yO3.yOC10.EuLwU5yOwRqJ2TSB$5.GsQvAtSuEuQuXqV7.wOyOuW4.yOyGuLKsQyOwO3.3yO2.BD11.tNwP6yOtFqKpXpMI$5.JqPpXqTsDtKvDrKFPsTxB3.uE2yOxTpC7.2yOxH3.2yOqHDLX11.sQvTyM5yOwStFrRqJU$8.TrOtHuBtLrMsFwByID4.pH3yO6.U3yO3.vCuXrIpLpIL10.rOuKxW6yOwEtRrOpJA$9.pXrQsEuCvRvMtOrIqXsIrWO2.I2yO2.rK2yO2.wV3yO2.qRyIvTrDpQpED9.pUsLxB7yOvUsUpXD$10.R2pVsGuStIrFtQyOyLyOrAMpTrVqG2.qJ2yOwA2.qL3yOvTwA2yOuTsBrJpXB9.qJvTyI6yOxQuAqNG$13.sLrAsQtUuWuTwCxRwTyKvLqH2.D2.wRyOvH3.6yOxQuTtNsRpWE8.pCuMxHyI6yOvBqXJ$14.GpCWqNuNuHwIuLuIwPsFpVtEsJC2.yJyOxF2.vH5yOyDvEsWtJtBqNpIA6.GsWvOxDyL5yOvVrHJ$17.RpIwKxRwNvRwHvDxJyOyJyO3.2yOuMrUwN5yOvLtNsCtAuRtVrOA7.qVtNvSyA5yOwMrJG$20.qVvSwKwAxByLxO3yO3.qNuDwRyIyNyL2yOvGsVtVtSuCvXwArR8.SrKuNxT5yOwSrGA$21.BsWuHvBxOtEqC3yO3.IwExOxAwOxNyOwUwExExBwVyOvV10.qFuHyC5yOwPqS$22.EqWpOrLuNQpSyOyG4.rWrVsFtUwCxX6yOpE10.qGvByN5yOwCpV$23.LBpRrNuIrVpWF2.rMrLC.SsFuBuVwTyJ3yOuF11.qUwO6yOvBV$23.qQSpTqGtTuFpP2.uQwT3.ArJrIsCvBxX2yOuR12.sH7yOtJB$24.rLpLrRsItWrGILU5.pQpLqXvLyIxWrD12.JxK7yOqV$25.XqKsStKtDsWsCpB7.rGxDyIuV13.wH7yOvOA$27.rFsItJxEuLqTC6.tPwOvJ13.wC8yOqF$28.qXsTvTuMrTqDqOqGI2.rBuTtE3.B5.CA2.uV8yOsA$28.LrQuCtSsNsSsXrUpHCHwTvK2.NpXQBESpNpVpPpJpRuV6yOyMyLtN$29.qHsAsTtTuItPsSqVqK2yOwKpLqKtItFqGpQrCsRtHsJrSsSvV5yOyMxIxCuN$29.HpDrEtBtPtRuBuI3yOtItQwFxIuXtIuBvMwAvXuMvGyA3yOyMyGxNvIuLuF$31.pSpWqMsCtTyI2yOwCwP2yOyBwNxJyOxVyAxNxV2yOyGxKwRwDvKtJrPsG$31.KAQqJtXwOxLwUxT2yK4yOyMyN3yOyKwMvIuFsTsCrBXW$34.qGtJuIvDvNvTwDwSxNxWxRxAwMyE2yOxItJsCrTpQH$34.pFqIrDrJsFsLtGuNvHuXtWsCvAxGxXvTqIGW$37.SXpMqWsGsAqPTpJtOvLuC$40.BN3.OrPrI!","ko":{"name":"펜타우리움","desc":"고리 3겹 커널을 쓰는 큰 생물. 몸 안쪽에 줄무늬 구조가 있어요."},"en":{"name":"Pentaurium","desc":"A large creature with a three-ring kernel and striped inner structure."}},
+{"name":"Kronium solidus","code":"K4s","R":18,"T":10,"b":"1,1/3","m":0.24,"s":0.029,"h":23,"w":23,"sum":193.7765,"speed":2.389,"mass300":1.008,"cells":"9.GL2OGB$6.BpPrIsM2tDsPrVqTpPO$5.pKsRvRyD4yOxHvRtVrVpUE$4.qEuS10yOwFtLqRJ$3.OuF6yOyL5yOxHuCqTE$3.sFyG3yOxEuCtDtTvJxHyL3yOxHtQpX$2.pPwX3yOsC3.BqHtBvWyG3yOwIsFO$2.uP3yO7.pIsMvRyG2yOyLuFpS$.qMyI2yO9.pPtBwN3yOvWrA$.vGyOwN4.qJsHrQqEB2.qTuNyB2yOxCrSB$pPxMyOpN3.yLwSqMpUrIrA2.TsUxC2yOxRsFG$sHyGvEJ2.xWxC3.GrXL2.rQwL2yOxRsCE$sUxEtVJ.tVuXpN4.sPO2.qWwN2yOxErN$rIvRuFpFrIqRsHpU3.pDtT3.rAxP2yOvWqM$pItTuUwFqMrAsFrQpD2.yBqE3.tG3yOuApF$.tVyGwFvMtBrVrXsHtQyOsK3.ByG2yOxUrQB$.sWtVyLyOvBqTpFvJwDpD4.yB3yOuCpF$2.tBxCyOvJpDqWqM5.4yOwAqE$2.qTuUwVuAsRTB.BLsW4yOwLqM$3.rGsHvWuAsUsCsPuI4yOxHuNpX$4.2sCuIvMwSyLyOyLxWvWtJqOB$6.qJsKuKuStTsHpP$7.B!","ko":{"name":"크로니움","desc":"고리 2겹 커널(R=18). 고리 안에 작은 고리가 든 모양으로 천천히 이동해요."},"en":{"name":"Kronium","desc":"Two-ring kernel (R = 18). A ring inside a ring, drifting slowly forward."}},
+{"name":"Echinium solidus","code":"3Es","R":18,"T":10,"b":"3/4,1,1/2","m":0.226,"s":0.0272,"h":39,"w":31,"sum":395.2078,"speed":0.886,"mass300":0.999,"cells":"18.EIC$17.qRvEwOuQpN$17.vK3yOsN$17.wT3yOtV$10.UrArKpSG2.4yOxSV$9.UxH3yOtDpLuI5yOuFpLDAJqOpW$10.5yOvQ2yO2yN3yOyHwQwWyGyOwMpR$9.qE8yOrPxH9yOsW$9.pG7yOsF.xW9yOtC$9.uF2yOtSuHyM2yO2.xJ4yOyB2yOyFuA$6.rRrIQ3yO2.tPyIyC2.sKxL2yOwBtR2yOrA$5.wJ5yOvM3.rM4.TsTtN.sM2yO$5.yL5yOvN12.3yOpGE$5.wO5yOxL11.uU3yOwKuApP$5.uK2yOyJwWwV11.S6yOxHpE$5.uG2yO14.rBvRxQyK4yOtE$5.vA2yO16.pXuH4yOtT$3.PIvNyNyOC16.rL3yOxU$2.sCwHwUxN2yOqV16.3yOtK$2.6yOqN14.rJ3yOuR$.rJyC3yOyKxE14.pG4yO$2.vO2yOsS16.tP4yOqV$2.tC2yOU17.xN4yOpV$2.pExMyOwCpR16.uK4yOrI$2.EwX3yOtAF14.4yOyL$2.vN5yOqF11.qPtMxC2yOwFqU$.tC6yO11.qQ3yOyLvC$.5yOwPJ11.wE3yOvO$sE4yOuIpA12.pU3yOsQ$sGxM4yOtOtGuArGE3.CuPrUG2.xV2yOxUpI$qHvDvEuCvNyM4yOuGpC2.yM2yOvQrSrF4yOpH$.L3.vE5yOuKG.yJ8yOyN$5.vG6yOrJpIwV3yOyJwVwDuNuL$5.2yOyExU4yOwKxC3yOvJU$5.2yOpXvC2yOxFyE5yOrS$5.xTyOuC2yOuT.qOxO4yOG$5.sRyB2yOxK3.tK4yO$6.qItMtG4.qBwQxOwV$13.pItMrV!","ko":{"name":"에키니움","desc":"가시가 돋친 고리 모양. 아주 느리게 떠다녀요."},"en":{"name":"Echinium","desc":"A spiky ring that drifts very slowly."}},
+{"name":"Hexahelicium solidus","code":"H6s","R":13,"T":10,"b":"1","m":0.36,"s":0.047,"h":42,"w":72,"sum":753.5686,"speed":0.0,"mass300":0.999,"cells":"15.CIPWpCpHpKpLpJpEWOG$12.EPpFpVqKqWrJrRrXsEsGsFsArQrCqKpPSD$10.IpCqAqVrQsJtAtPuCuNuUvBvDvCuVuMtXtEsGrEpWTB$8.GpDqGrJsJtGuCuVvNwDwSxExN2xSxPxIwVwKvSuWtWsQrFpQJ$7.RqBrJsOtQuPvNwKxFxX10yOyHxOwQvMuAsIqMT$5.BpDqTsHtNuPvQwQxQ16yOyKwUvCtBqVW$4.CpKrHtAuGvKwLxN7yOyMyJ2yGyJyN7yOxNvIsWqNO$4.pJrOtMuXwAxDyF5yOyNyExOwXwLwGwIwSxJyCyN6yOxEuOsApQD$3.pBrLtTvKwPxP5yOyNyCxGwDvBuFtRtNtTuJvHwKxQyK6yOvXtIqUT$2.KqVtRvTxDyE4yOyMyDxKwFuQtGsCrHqWqVrFrXtAuHvUxHyI5yOxVvFsOqDI$2.pTtAvTxP4yOyJyAxKwNvGtOrTqHpFMFHSpOqRsBtOvGwTyB6yOvSsQpUC$.KrNvCxS4yOyBxGwKvNuJsRqRW7.GpPrCsOuDvPxEyI5yOwFsNpK$.pLtKxB4yOxXwOvLuMtKrXqBB10.HpKqPrXtNvLxM4yOyKuNrDN$.qRvD5yOwMuStOsNrHpN3.BHMOSTPH5.pBqWtMwMyM2yOyIuJrIX$.rVwM4yOxVuRsUrRqOpD2.GpHqCqLqPqUqXrCrFqXpSE5.QsKwQ2yOxQtCqFO23.D$BsUxN4yOwXsWrBpVP2.LqJrCqQpXpNpGpIpPqIrKrXqE6.ItWyG2yOuPpDB23.pRUA$GtJyAyN3yOwIrKpJC2.IqRrKpVL6.VrBsHpF6.rNxR3yOvL24.rGqJpLUPK$EtKxVyByJ2yOwIqPB2.GqIrSpT9.JrQrXF5.qKxS4yOvV22.CsQrVqWqDpUqA$.tAxAxDxPyIyOxArBECNqArMqI11.pBtAqX5.rSyK5yOvI21.pEtMtHsGrKrCrF$.sGvWvXwMxLyJxKsE2pMqErAqMG12.rAuEqTB3.wV7yOsS18.EJqJuNuStPsSsIsJV$.rH2uSvHwGxJwXsNqJqKqLqBS14.tRvSsSqCpEpO5yOyNyLyOwVpN15.KpHpSpUrRvSwDvBuCtNtOqE$.qDtOtNuBvAwCvTrRpUpRpGJ15.pLwX8yOpKpApXsOvPtQ14.SqCqLqKqJsMwXxJwHvI2uSrH$.UsJsIsRtOuRuOqJID18.sQ7yOwP3.BqRuCrA12.GqNrAqE2pMsDxJyJxLwNwAvWsH$2.rErCrKsFtGtNpE21.vG5yOyJrO5.qWtApC11.qJrNpXMBErBwXyOyIxPxDxAtA$2.qApUqDqVrUsRD22.vT4yOxRqI5.ErWrQK9.pUrSqHG2.BqPwI2yOyJyBxWtKE$2.JOTpKqIrF24.vH3yOxQrN6.pFsGrCW6.NpXrLqQI2.DpKrKwI3yOyNyAtJG$6.TpQ23.CpFuG2yOyGtXK6.qDrWrLqKpRpJpHpOqAqRrCqIK2.QpWrCsXwX4yOxNsTB$7.C23.PqItFxT2yOwRsMT5.EpRqWrErCqXqTqOqLqBpGG2.pEqPrSsVuRxW4yOwMrV$31.pBrKuNyL2yOyMwNtNrBpD5.GNRQOLGA3.pPrIsOtPuTwM5yOvCqR$31.OrEuPyM4yOxNvNtPsBqQpMJ10.DqDsBtLuNvMwPxX4yOxAtJpL$32.pKsNwE5yOyJxFvQuEsPrDpQI7.pAqTsSuKvOwLxGyB4yOxRvBrNJ$32.CpUsPvR6yOyBwTvGtPsCqSpQUJGPpHqJrVtPvIwOxLyAyK4yOxOvSsXpS$33.IqDsOvFxU5yOyIxHvVuItBsArHqXrArJsEtIuSwGxLyEyM4yOyDxCvStPqUK$34.TqUtJwA6yOyLxQwLvIuKtVtPtTuHvDwFxHyDyN5yOxOwOvJtSrKpA$34.DpQsAuOxE7yOyCxKwTwKwIwNxBxPyFyN5yOyExCvXuWtKrNpI$35.OqNsWvHxN7yOyNyJ2yHyJyN7yOxMwKvJuFsXrGpJB$36.VqUtAvBwTyI15yOyNxPwPvOuOtMsGqSpCB$37.TqLsHtXvKwPxNyF10yOxVxDwIvLuNtOsNrHqAQ$38.JpPrDsOtUuVvRwJwUxGxNxRxQxLxCwQwCvMuTuBtFsHrHqFpCF$39.ASpVrCsFtDtVuKuUvBvCvAuTuLuAtNsXsHrPqUpWpBH$41.DSpNqJrBrOrWsCsEsCrWrQrHqVqJpTpEOD$44.FNVpCpHpJpIpGpBVOHB!","ko":{"name":"헥사헬리시움","desc":"S자로 휜 큰 몸. 이동하지 않고 제자리에서 천천히 회전해요."},"en":{"name":"Hexahelicium","desc":"A large S-shaped body that slowly spins in place."}},
+{"name":"Hydrogeminium natans","code":"3GH2n","R":18,"T":10,"b":"1/2,1,2/3","m":0.26,"s":0.036,"h":51,"w":55,"sum":689.3216,"speed":4.211,"mass300":1.03,"cells":"37.BEG3JGE$35.JpApPqCqJqOqMqEpUpKpAQG$33.BVqCrLsPtLtVuCtTtJsPrVrDqJpPTB$33.pIrAsRuIvWwXxMxPxHwQvTuStTsUrSqOpFG$32.pKrXuIwFxU6yOyLxJwFvBtVsPrDpNJ$31.TsCvT11yOyIwXvTuNsWrDpKG$31.rIwA14yOxHvWuKsRqTpDB$30.rQwS16yOxHvRuArXpXL$29.tG7yOyL4yOyL6yOwXvBsWqTpDB$28.tT7yOxUwSwIwVxHxJxMxUyI4yOyIwIuArNpNG$27.sW7yOxMvOtQsPtBuIvJwAwQxPyL4yOxPvBsHpXL$26.qTyL4yOxMvMuUtTrXqCpKqErStLuSvRwVyB5yOwFtDqMQ$25.pKuPyD3yOwVpS7.pIrQtJuSwDxPyL4yOxHuCrAV$24.QrXvOyB3yOqH9.pDrLtGvBxCyL4yOyBuSrLpA$23.rItDvMxU3yOtV11.pArGtLwIyI4yOyIvBrQpD$22.BuIwSyI2yOvE14.pNrXvMyG4yOyGvBrQpD$23.tJyD2yOpU15.VrNvEyB4yOxPuKrIpA$22.pItVyL2yO16.pSsRwAyD4yOwQtLqRQ$21.rLvJxW2yOsP16.rLvExPyL4yOvMsKpXG$20.tOxJ3yOwLsMJ15.sWxC5yOyBuCrIpF$20.wDyLyOyGuCsHrLpU15.tQyB5yOwLsPqEO$19.sCwS2yOtTpDLpNqHO14.uCyL5yOuFrApDB$16.JtTwNxCyG2yOtG2.BVG13.qRwF5yOuXrQpIG$16.rL6yOxUpD15.qJvRyB5yOuNrQpF$16.tJ7yOvO15.7yOtVqOV$14.pFrX3yOuXTtT3yOG13.rQ6yOvBpF$12.uI6yOtD2.xEyOxH14.6yOvJQ$9.JqEtB8yO2.JsKqR9.pFqErNuC3yOyLyGyLsU$9.tG4yOyD.rG3yOtO8.qCqE3.qT6yOxEtLB$8.wV5yO3.wS2yOtL7.qRwQuFE2.sU5yOxMtT$7.sCyL4yOwFJ3.xUxR8.vG2yOrS2.2yOuUuXyGxEtQ$4.tTvWuFvT2yO2.vWvMpU10.rA2.sR7yOsWsCvMqO$4.vGwNwLxRyOpI2.pIxWuC9.2yOrN.J7yOqM$4.uPwXxMyIyOV2.EyOuS8.uF2yOwV2.6yOuS$4.uSuUvB2yOqEB.JE9.vG3yOrArV2yOuIuPyOwV$4.sP2vRwXyOyGqJL8.O3.yG6yOrLqMvB$3.pFtT2xM3yOsMJ7.rGtQ3.xH6yO$3.rAvM4yOwIqW8.sFwDtQ2.xE5yOrG$.pPqTsHvOyL2yOwQsKV8.pAtT2uCwDyL4yOuP$rGtBsRsUuPxHyOwSuFqWO9.rIvJyB4yOvJuCpFJ$qJtQtOtBuAuFuUuPtTrQpIGEVvTyOV3.rIxC4yOuAsPrGpPB$.rGsRrGpUqWsCsWtQtGrQqCpPqWvWyOsKB2.uI4yOtJrAV$5.pKrDsFtQvMvTuUtDrQqTsW2uIvOyI4yOuUrL$5.OrLtOvGxWyLyOwVsHpPpNyD7yOvRpI$6.sKxC2yIyLyOxWuPrIuN7yOuUqJ$5.QuNyB2yOyLyIyL7yOyIpK$5.GsUxJ2yOyGwSvWwNxW4yOyLG$6.pKuAxHxUwNuCsRtBuSxCyG2yLsK$8.qJsRsWsCrApXqCsUqWG$10.TqHqMpN$11.QqHpK!","ko":{"name":"하이드로제미니움","desc":"몸 안에 작은 알갱이 구조가 가득한 복잡한 생물. 이름처럼(natans = 헤엄치는) 헤엄쳐요."},"en":{"name":"Hydrogeminium","desc":"A complex creature full of small granules inside. As its name says (natans = swimming), it swims."}}];
+</script>
+<script>
+'use strict';
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+
+/* ===================== I18N ===================== */
+const I18N = {
+  ko: {
+    speed:'속도', stepT:'한 스텝 (.)', reset:'⟲ 다시', clear:'비우기', gridT:'격자 크기', cmapT:'색상', fitT:'전체 보기', followT:'생물 따라가기 (F)',
+    species:'생물 도감', speciesSub:'눌러서 불러오기', credit:'생물 데이터: Bert Chan, Lenia (MIT 라이선스)',
+    params:'파라미터', paramsSub:'초록 눈금 = 원래 값', rings:'커널 고리 β', kshape:'커널 모양', gshape:'성장 함수',
+    poly:'다항식', bump:'지수 봉우리', gauss:'가우스', restore:'원래 값으로', link:'링크 복사', png:'PNG 저장',
+    graphs:'그래프', gK:'커널 K — 이웃을 보는 범위', gG:'성장 G(U) + 지금 U 분포', gGhint:'초록 구간(G>0)에 있는 칸은 자라고, 밖은 줄어들어요.',
+    gM:'질량 변화', viewMode:'화면에 보기', vA:'생물 A', vU:'이웃 밀도 U', vG:'성장 G',
+    brush:'붓', tDraw:'그리기', tErase:'지우기', tStamp:'생물 찍기', tSoup:'무작위 수프', size:'크기',
+    hDraw:'드래그해서 생명을 그려요', hErase:'드래그해서 지워요', hStamp:'누른 채 끌어 방향을 정하고 놓으면 찍혀요', hSoup:'눌러서 무작위 덩어리를 뿌려요 — 새 생물이 생길 수도',
+    mass:'질량', vel:'속도', perStep:'칸/t',
+    pMu:'μ — 성장이 가장 잘 되는 이웃 밀도', pSigma:'σ — 성장 구간의 너비', pR:'R — 커널 반지름 (칸)', pT:'T — 시간 해상도 (dt = 1/T)',
+    extinct:'생명이 모두 사라졌어요 — ⟲ 다시 또는 원래 값으로', explode:'세상이 꽉 찼어요 (폭발) — μ나 σ를 줄여 보세요', empty:'빈 세상이에요 — 도감에서 생물을 고르거나 붓으로 그려 보세요',
+    copied:'링크를 복사했어요', saved:'PNG를 저장했어요', copyFail:'복사 실패 — 주소창의 링크를 쓰세요',
+    noGL:'이 브라우저는 WebGL2 실수 텍스처를 지원하지 않아요. 최신 Chrome / Edge / Safari에서 열어 주세요.',
+    help:'도움말', testsRun:'단위 테스트 실행 중…', testsTitle:'단위 테스트', close:'닫기', custom:'(직접 만든 세상)',
+    cm_lenia:'Lenia', cm_magma:'마그마', cm_glacier:'빙하', cm_neon:'네온',
+    helpHtml:`<h3>Lenia Lab</h3>
+<p><b>Lenia</b>는 Bert Chan이 2018년에 만든 <b>연속형 세포 자동자</b>예요. 콘웨이의 '생명 게임'에서 칸이 살거나 (1) 죽는 (0) 대신, 각 칸이 0~1 사이의 실수값을 갖고 조금씩 부드럽게 변해요. 그 결과 화면 속 무늬가 실제 미생물처럼 헤엄치고 회전하고 모양을 유지해요.</p>
+<h4>규칙은 딱 두 줄</h4>
+<div class="math">U = K * A
+  → 커널 K로 주변을 가중 평균한 이웃 밀도
+A ← clip(A + dt·G(U), 0, 1)
+  → G는 U가 μ 근처면 +, 멀면 −</div>
+<p>각 칸은 반지름 R 안의 이웃을 고리 모양 커널 K로 살펴서 밀도 U를 구해요. U가 μ에 가까우면 (σ 범위 안) 자라고, 너무 적거나 많으면 줄어들어요. 생물은 이 균형이 몸 전체에서 계속 맞아떨어지는 '움직이는 해'예요.</p>
+<h4>해 볼 것</h4>
+<ul><li>도감에서 생물을 고른 뒤 <b>μ나 σ를 조금씩</b> 바꿔 보세요. 생물이 변형되거나 죽거나 폭발해요. 초록 눈금이 원래 값이에요.</li>
+<li><b>그래프</b>에서 지금 칸들의 U 분포가 초록 구간 안에 있는지 보세요. 생물이 죽는 이유가 보여요.</li>
+<li><b>생물 찍기</b>로 같은 종을 여러 마리 놓아 부딪히게 해 보세요.</li>
+<li><b>무작위 수프</b>를 뿌리면 가끔 저절로 생물이 생겨나요.</li></ul>
+<h4>단축키</h4>
+<table><tr><td><kbd>Space</kbd></td><td>재생 / 멈춤</td></tr><tr><td><kbd>.</kbd></td><td>한 스텝</td></tr><tr><td><kbd>R</kbd></td><td>다시 (현재 생물)</td></tr><tr><td><kbd>C</kbd></td><td>비우기</td></tr>
+<tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>도감 1~9번</td></tr><tr><td><kbd>D</kbd> <kbd>E</kbd> <kbd>S</kbd> <kbd>N</kbd></td><td>그리기 / 지우기 / 찍기 / 수프</td></tr>
+<tr><td><kbd>F</kbd></td><td>생물 따라가기 켜기/끄기</td></tr><tr><td>휠 · 두 손가락</td><td>확대 / 이동 (오른쪽 버튼 또는 Shift+드래그로 이동)</td></tr></table>
+<h4>출처</h4>
+<p>Bert Wang-Chak Chan, "Lenia — Biology of Artificial Life", <i>Complex Systems</i> 28(3), 2019. 생물 데이터는 <a href="https://github.com/Chakazul/Lenia" target="_blank" rel="noopener" style="color:var(--acc2)">github.com/Chakazul/Lenia</a> (MIT)에서 가져왔어요.</p>
+<p><a href="?test=1" style="color:var(--acc2)">단위 테스트 실행 (?test=1)</a></p>`
+  },
+  en: {
+    speed:'Speed', stepT:'Single step (.)', reset:'⟲ Reset', clear:'Clear', gridT:'Grid size', cmapT:'Colors', fitT:'Fit view', followT:'Follow the creature (F)',
+    species:'Species', speciesSub:'click to load', credit:'Species data: Bert Chan, Lenia (MIT license)',
+    params:'Parameters', paramsSub:'green tick = original', rings:'Kernel rings β', kshape:'Kernel shape', gshape:'Growth function',
+    poly:'Polynomial', bump:'Exp. bump', gauss:'Gaussian', restore:'Restore', link:'Copy link', png:'Save PNG',
+    graphs:'Graphs', gK:'Kernel K — where a cell looks', gG:'Growth G(U) + current U', gGhint:'Cells inside the green band (G>0) grow; outside they shrink.',
+    gM:'Mass over time', viewMode:'Show on screen', vA:'Creature A', vU:'Neighbors U', vG:'Growth G',
+    brush:'Brush', tDraw:'Draw', tErase:'Erase', tStamp:'Stamp', tSoup:'Random soup', size:'Size',
+    hDraw:'Drag to paint life', hErase:'Drag to erase', hStamp:'Press, drag to aim, release to stamp', hSoup:'Click to drop random blobs — new life may emerge',
+    mass:'Mass', vel:'Speed', perStep:'cells/t',
+    pMu:'μ — neighbor density where growth peaks', pSigma:'σ — width of the growth band', pR:'R — kernel radius (cells)', pT:'T — time resolution (dt = 1/T)',
+    extinct:'All life died out — ⟲ Reset or Restore', explode:'The world filled up (explosion) — try lower μ or σ', empty:'Empty world — pick a species or paint with the brush',
+    copied:'Link copied', saved:'PNG saved', copyFail:'Copy failed — use the address bar link',
+    noGL:'This browser lacks WebGL2 float textures. Please open in a recent Chrome / Edge / Safari.',
+    help:'Help', testsRun:'Running unit tests…', testsTitle:'Unit tests', close:'Close', custom:'(your own world)',
+    cm_lenia:'Lenia', cm_magma:'Magma', cm_glacier:'Glacier', cm_neon:'Neon',
+    helpHtml:`<h3>Lenia Lab</h3>
+<p><b>Lenia</b> is a <b>continuous cellular automaton</b> created by Bert Chan in 2018. Unlike Conway's Game of Life, where cells are alive (1) or dead (0), each cell holds a real value between 0 and 1 that changes smoothly. Patterns end up swimming, spinning and holding their shape like microorganisms.</p>
+<h4>The whole rule is two lines</h4>
+<div class="math">U = K * A
+  → weighted neighbor sum with kernel K
+A ← clip(A + dt·G(U), 0, 1)
+  → G is + near μ, − far from μ</div>
+<p>Each cell looks at neighbors within radius R through a ring-shaped kernel K to get its density U. If U is close to μ (within σ) the cell grows; too little or too much and it shrinks. A creature is a moving solution where that balance keeps holding across its whole body.</p>
+<h4>Things to try</h4>
+<ul><li>Pick a species, then nudge <b>μ or σ</b>. It deforms, dies or explodes. The green tick marks the original value.</li>
+<li>In <b>Graphs</b>, check whether the cells' U values sit inside the green band — you can see why a creature dies.</li>
+<li>Use <b>Stamp</b> to place several of the same species and let them collide.</li>
+<li>Drop <b>Random soup</b> — sometimes creatures emerge by themselves.</li></ul>
+<h4>Shortcuts</h4>
+<table><tr><td><kbd>Space</kbd></td><td>Play / pause</td></tr><tr><td><kbd>.</kbd></td><td>Single step</td></tr><tr><td><kbd>R</kbd></td><td>Reset current species</td></tr><tr><td><kbd>C</kbd></td><td>Clear</td></tr>
+<tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>Species 1–9</td></tr><tr><td><kbd>D</kbd> <kbd>E</kbd> <kbd>S</kbd> <kbd>N</kbd></td><td>Draw / Erase / Stamp / Soup</td></tr>
+<tr><td><kbd>F</kbd></td><td>Toggle follow camera</td></tr><tr><td>Wheel · two fingers</td><td>Zoom / pan (right button or Shift+drag to pan)</td></tr></table>
+<h4>Credits</h4>
+<p>Bert Wang-Chak Chan, "Lenia — Biology of Artificial Life", <i>Complex Systems</i> 28(3), 2019. Species data from <a href="https://github.com/Chakazul/Lenia" target="_blank" rel="noopener" style="color:var(--acc2)">github.com/Chakazul/Lenia</a> (MIT).</p>
+<p><a href="?test=1" style="color:var(--acc2)">Run unit tests (?test=1)</a></p>`
+  }
+};
+let LANG = (() => {
+  const q = new URLSearchParams(location.search).get('lang');
+  if (q === 'ko' || q === 'en') return q;
+  try { const s = localStorage.getItem('leniaLang'); if (s === 'ko' || s === 'en') return s; } catch (e) {}
+  return (navigator.language || 'ko').toLowerCase().startsWith('ko') ? 'ko' : 'en';
+})();
+const t = k => (I18N[LANG][k] ?? I18N.ko[k] ?? k);
+
+/* ===================== MATH: kernel, growth, RLE ===================== */
+const KCORE = { 1: r => { const q = 4 * r * (1 - r); return q * q * q * q; },          // polynomial (quad4)
+                2: r => (r > 0 && r < 1) ? Math.exp(4 - 1 / (r * (1 - r))) : 0 };       // exponential bump
+function growth(u, m, s, gn) {
+  const d = u - m;
+  if (gn === 2) return Math.exp(-d * d / (2 * s * s)) * 2 - 1;
+  const q = Math.max(0, 1 - d * d / (9 * s * s)); return q * q * q * q * 2 - 1;
+}
+function parseB(b) {           // "1/2,1,2/3" or [..] → numbers
+  if (Array.isArray(b)) return b.map(Number);
+  return String(b).split(',').map(f => { const [n, d] = f.split('/'); return d ? +n / +d : +n; });
+}
+function kernelValue(r, b, kn) {   // r = dist / R
+  if (r >= 1) return 0;
+  const B = b.length, Br = B * r, i = Math.min(Math.floor(Br), B - 1);
+  return b[i] * KCORE[kn](Br % 1);
+}
+function buildKernel(R, b, kn) {   // nonzero taps, normalized to sum 1
+  const taps = []; let sum = 0;
+  for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++) {
+    const w = kernelValue(Math.hypot(dx, dy) / R, b, kn);
+    if (w > 0) { taps.push(dx, dy, w); sum += w; }
+  }
+  const n = taps.length / 3, f = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { f[i * 3] = taps[i * 3]; f[i * 3 + 1] = taps[i * 3 + 1]; f[i * 3 + 2] = taps[i * 3 + 2] / sum; }
+  return { R, b: b.slice(), kn, n, taps: f };
+}
+function ch2val(c) {
+  if (c === '.' || c === 'b') return 0;
+  if (c === 'o') return 255;
+  if (c.length === 1) return c.charCodeAt(0) - 64;
+  return (c.charCodeAt(0) - 112) * 24 + (c.charCodeAt(1) - 65 + 25);
+}
+function decodeRLE(st) {        // Chan's 2D RLE → {w,h,data}
+  const rows = []; let row = [], cnt = '', last = '';
+  for (const ch of st.replace(/!$/, '') + '$') {
+    if (ch >= '0' && ch <= '9') cnt += ch;
+    else if ('pqrstuvwxy@'.includes(ch)) last = ch;
+    else if (ch === '$') { rows.push(row); for (let k = 1; k < (+cnt || 1); k++) rows.push([]); row = []; cnt = ''; last = ''; }
+    else { const v = ch2val(last + ch) / 255; for (let k = 0; k < (+cnt || 1); k++) row.push(v); cnt = ''; last = ''; }
+  }
+  const h = rows.length, w = Math.max(...rows.map(r => r.length)), data = new Float32Array(w * h);
+  rows.forEach((r, y) => r.forEach((v, x) => { data[y * w + x] = v; }));
+  return { w, h, data };
+}
+
+/* ===================== COLOR MAPS ===================== */
+const CMAPS = {
+  lenia:   ['#06080c', '#102a5c', '#13708f', '#29b3a0', '#8df0b9', '#f4f7c4', '#ffffff'],
+  magma:   ['#000004', '#2c115f', '#721f81', '#b73779', '#f1605d', '#feb078', '#fcfdbf'],
+  glacier: ['#04060b', '#0b2340', '#1c4f80', '#3f86b8', '#86bfe0', '#cfe9f6', '#ffffff'],
+  neon:    ['#05030c', '#2a0a6e', '#6a0bb0', '#c21d9c', '#ff5aa5', '#ffc2de', '#fff6fb'],
+};
+const hex2rgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+function makeLUT(name) {
+  const k = CMAPS[name].map(hex2rgb), out = new Uint8Array(256 * 4);
+  for (let i = 0; i < 256; i++) {
+    const x = i / 255 * (k.length - 1), j = Math.min(Math.floor(x), k.length - 2), f = x - j;
+    for (let c = 0; c < 3; c++) out[i * 4 + c] = Math.round(k[j][c] + (k[j + 1][c] - k[j][c]) * f);
+    out[i * 4 + 3] = 255;
+  }
+  return out;
+}
+const luminance = (r, g, b) => 0.2126 * r + 0.7152 * g + 0.0722 * b;
+
+/* ===================== WEBGL2 ENGINE ===================== */
+const cv = $('#cv');
+const gl = cv.getContext('webgl2', { antialias: false, premultipliedAlpha: false, preserveDrawingBuffer: false, powerPreference: 'high-performance' });
+let FMT = null;
+if (gl) {
+  if (gl.getExtension('EXT_color_buffer_float')) FMT = { internal: gl.R32F, half: false };
+  else if (gl.getExtension('EXT_color_buffer_half_float')) FMT = { internal: gl.R16F, half: true };
+}
+const VS = `#version 300 es
+void main(){ vec2 p = vec2(float((gl_VertexID << 1) & 2), float(gl_VertexID & 2)); gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0); }`;
+const GROWTH_GLSL = `
+float growthF(float u, float m, float s, int gn){
+  float d = u - m;
+  if (gn == 2) return exp(-d * d / (2.0 * s * s)) * 2.0 - 1.0;
+  float q = max(0.0, 1.0 - d * d / (9.0 * s * s)); q *= q; return q * q * 2.0 - 1.0;
+}`;
+const FS_STEP = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+uniform sampler2D uA; uniform sampler2D uTaps;
+uniform int uN, uTapW, uNTaps, uGn; uniform float uM, uS, uDt;
+layout(location = 0) out vec4 oA;
+layout(location = 1) out vec4 oU;
+${GROWTH_GLSL}
+void main(){
+  ivec2 p = ivec2(gl_FragCoord.xy); int msk = uN - 1;
+  float u = 0.0;
+  for (int i = 0; i < uNTaps; i++) {
+    vec4 tp = texelFetch(uTaps, ivec2(i % uTapW, i / uTapW), 0);
+    u += tp.z * texelFetch(uA, (p + ivec2(tp.xy)) & msk, 0).r;
+  }
+  float a = texelFetch(uA, p, 0).r;
+  oA = vec4(clamp(a + uDt * growthF(u, uM, uS, uGn), 0.0, 1.0));
+  oU = vec4(u);
+}`;
+const FS_PAINT = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+uniform sampler2D uA; uniform sampler2D uPat;
+uniform int uN, uMode; uniform vec2 uC, uPatSize; uniform float uRad, uAng, uSeed, uAmt;
+out vec4 o;
+float hash(vec2 p){ p = fract(p * vec2(443.897, 441.423) + uSeed); p += dot(p, p.yx + 19.19); return fract((p.x + p.y) * p.x); }
+float patAt(vec2 q){            // bilinear sample of the pattern, 0 outside
+  vec2 f = q - 0.5; vec2 i = floor(f); vec2 w = f - i; ivec2 ii = ivec2(i); ivec2 sz = ivec2(uPatSize);
+  float v[4];
+  for (int k = 0; k < 4; k++) { ivec2 c = ii + ivec2(k & 1, k >> 1);
+    v[k] = (c.x < 0 || c.y < 0 || c.x >= sz.x || c.y >= sz.y) ? 0.0 : texelFetch(uPat, c, 0).r; }
+  return mix(mix(v[0], v[1], w.x), mix(v[2], v[3], w.x), w.y);
+}
+void main(){
+  ivec2 p = ivec2(gl_FragCoord.xy); float a = texelFetch(uA, p, 0).r; float N = float(uN);
+  vec2 d = vec2(p) + 0.5 - uC; d = mod(d + N * 0.5, N) - N * 0.5;       // shortest torus offset
+  if (uMode == 0) { float r = length(d) / uRad; if (r < 1.0) a = mix(a, 1.0, uAmt * (1.0 - r * r)); }
+  else if (uMode == 1) { float r = length(d) / uRad; if (r < 1.0) a *= smoothstep(0.8, 1.0, r); }
+  else if (uMode == 2) {
+    float c = cos(uAng), s = sin(uAng); vec2 q = vec2(c * d.x + s * d.y, -s * d.x + c * d.y) + uPatSize * 0.5;
+    if (q.x > -1.0 && q.y > -1.0 && q.x < uPatSize.x + 1.0 && q.y < uPatSize.y + 1.0) { float v = patAt(q); if (v > 1e-3) a = v; }
+  }
+  else if (uMode == 3) { float r = length(d) / uRad; if (r < 1.0) a = uAmt * hash(vec2(p)) * (r < 0.8 ? 1.0 : (1.0 - r) * 5.0); }
+  o = vec4(a);
+}`;
+const FS_RENDER = `#version 300 es
+precision highp float; precision highp int; precision highp sampler2D;
+uniform sampler2D uA; uniform sampler2D uU; uniform sampler2D uLut;
+uniform int uN, uView, uGn; uniform vec2 uOff, uRes; uniform float uCpp, uM, uS, uGrid;
+out vec4 o;
+${GROWTH_GLSL}
+float fetchV(ivec2 c){ c &= (uN - 1); return uView == 0 ? texelFetch(uA, c, 0).r : texelFetch(uU, c, 0).r; }
+float sampleV(vec2 w){
+  if (uCpp >= 0.75) return fetchV(ivec2(floor(w)));
+  vec2 f = w - 0.5; vec2 i = floor(f); vec2 t = f - i; ivec2 c = ivec2(i);
+  return mix(mix(fetchV(c), fetchV(c + ivec2(1, 0)), t.x), mix(fetchV(c + ivec2(0, 1)), fetchV(c + ivec2(1, 1)), t.x), t.y);
+}
+void main(){
+  vec2 sp = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
+  vec2 w = uOff + sp * uCpp;
+  float v = sampleV(w);
+  vec3 col;
+  if (uView == 0) col = texture(uLut, vec2(clamp(v, 0.0, 1.0) * (255.0 / 256.0) + 0.5 / 256.0, 0.5)).rgb;
+  else if (uView == 1) col = texture(uLut, vec2(clamp(v / max(uM * 2.0, 1e-3), 0.0, 1.0) * (255.0 / 256.0) + 0.5 / 256.0, 0.5)).rgb;
+  else { float g = growthF(v, uM, uS, uGn); col = g >= 0.0 ? mix(vec3(0.03), vec3(0.49, 0.95, 0.78), g) : mix(vec3(0.03), vec3(0.95, 0.35, 0.45), -g * 0.6 * smoothstep(0.0, 0.3 * uM, v)); }   // red only near life (U≈0 far away is boring)
+  if (uGrid > 0.0) {             // faint world grid every 32 cells: shows motion while the camera follows
+    vec2 gd = abs(fract(w / 32.0 + 0.5) - 0.5) * 32.0 / uCpp;
+    col = mix(col, vec3(1.0), uGrid * (1.0 - smoothstep(0.0, 1.0, min(gd.x, gd.y))));
+    vec2 bd = abs(fract(w / float(uN) + 0.5) - 0.5) * float(uN) / uCpp;   // world edge (the torus seam)
+    col = mix(col, vec3(0.38, 0.66, 1.0), 0.22 * (1.0 - smoothstep(0.0, 1.5, min(bd.x, bd.y))));
+  }
+  o = vec4(col, 1.0);
+}`;
+function compile(fs) {
+  const p = gl.createProgram();
+  for (const [type, src] of [[gl.VERTEX_SHADER, VS], [gl.FRAGMENT_SHADER, fs]]) {
+    const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+    gl.attachShader(p, s);
+  }
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+  const u = {}; const n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) { const name = gl.getActiveUniform(p, i).name; u[name] = gl.getUniformLocation(p, name); }
+  return { p, u };
+}
+let PROG = null, VAO = null, LUT_TEX = null;
+function texR(w, h, data) {
+  const tx = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tx);
+  gl.texStorage2D(gl.TEXTURE_2D, 1, FMT.internal, w, h);
+  for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+  if (data) gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, w, h, gl.RED, gl.FLOAT, data);
+  return tx;
+}
+function fbo(attach) {
+  const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+  attach.forEach((tx, i) => gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0 + i, gl.TEXTURE_2D, tx, 0));
+  gl.drawBuffers(attach.map((_, i) => gl.COLOR_ATTACHMENT0 + i));
+  const st = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+  if (st !== gl.FRAMEBUFFER_COMPLETE) throw new Error('framebuffer incomplete ' + st);
+  return f;
+}
+function initGL() {
+  PROG = { step: compile(FS_STEP), paint: compile(FS_PAINT), render: compile(FS_RENDER) };
+  VAO = gl.createVertexArray();
+  LUT_TEX = gl.createTexture();
+  gl.disable(gl.DITHER); gl.disable(gl.BLEND); gl.disable(gl.DEPTH_TEST);
+}
+function setLUT(name) {
+  gl.bindTexture(gl.TEXTURE_2D, LUT_TEX);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 256, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, makeLUT(name));
+  for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+}
+/* kernel taps on the GPU: RGBA32F texture, one tap per texel (dx, dy, w) */
+const TAPW = 256;
+function gpuKernel(K) {
+  const rows = Math.max(1, Math.ceil(K.n / TAPW)), d = new Float32Array(TAPW * rows * 4);
+  for (let i = 0; i < K.n; i++) { d[i * 4] = K.taps[i * 3]; d[i * 4 + 1] = K.taps[i * 3 + 1]; d[i * 4 + 2] = K.taps[i * 3 + 2]; }
+  const tx = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, tx);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, TAPW, rows, 0, gl.RGBA, gl.FLOAT, d);
+  for (const [k, v] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST]]) gl.texParameteri(gl.TEXTURE_2D, k, v);
+  K.tex = tx; return K;
+}
+function freeKernel(K) { if (K && K.tex) { gl.deleteTexture(K.tex); K.tex = null; } }
+
+class World {
+  constructor(N) {
+    if (N & (N - 1)) throw new Error('N must be a power of two');
+    this.N = N; this.cur = 0; this.steps = 0;
+    this.tex = [texR(N, N), texR(N, N)]; this.uTex = texR(N, N);
+    this.stepFb = [fbo([this.tex[1], this.uTex]), fbo([this.tex[0], this.uTex])];   // reading tex[i] writes into tex[1-i]
+    this.oneFb = [fbo([this.tex[0]]), fbo([this.tex[1]])];
+    this.uFb = fbo([this.uTex]);
+    this.buf = new Float32Array(N * N * 4);
+    this.clear();
+  }
+  dispose() { for (const f of [...this.stepFb, ...this.oneFb, this.uFb]) gl.deleteFramebuffer(f); for (const x of [...this.tex, this.uTex]) gl.deleteTexture(x); }
+  clear() { for (const f of [...this.oneFb, this.uFb]) { gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.clearBufferfv(gl.COLOR, 0, [0, 0, 0, 0]); } this.steps = 0; }
+  step(n, K, P) {          // P = {m, s, T, gn}
+    const pr = PROG.step; gl.useProgram(pr.p); gl.bindVertexArray(VAO); gl.viewport(0, 0, this.N, this.N);
+    gl.uniform1i(pr.u.uA, 0); gl.uniform1i(pr.u.uTaps, 1);
+    gl.uniform1i(pr.u.uN, this.N); gl.uniform1i(pr.u.uTapW, TAPW); gl.uniform1i(pr.u.uNTaps, K.n); gl.uniform1i(pr.u.uGn, P.gn);
+    gl.uniform1f(pr.u.uM, P.m); gl.uniform1f(pr.u.uS, P.s); gl.uniform1f(pr.u.uDt, 1 / P.T);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, K.tex);
+    for (let i = 0; i < n; i++) {
+      gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tex[this.cur]);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.stepFb[this.cur]);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      this.cur ^= 1; this.steps++;
+    }
+  }
+  paint(mode, o) {         // mode 0 draw, 1 erase, 2 stamp, 3 soup
+    const pr = PROG.paint; gl.useProgram(pr.p); gl.bindVertexArray(VAO); gl.viewport(0, 0, this.N, this.N);
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tex[this.cur]);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, o.pat ? o.pat.tex : this.uTex);
+    gl.uniform1i(pr.u.uA, 0); gl.uniform1i(pr.u.uPat, 2);
+    gl.uniform1i(pr.u.uN, this.N); gl.uniform1i(pr.u.uMode, mode);
+    gl.uniform2f(pr.u.uC, o.x, o.y); gl.uniform1f(pr.u.uRad, o.r || 1); gl.uniform1f(pr.u.uAng, o.ang || 0);
+    gl.uniform1f(pr.u.uSeed, o.seed ?? Math.random()); gl.uniform1f(pr.u.uAmt, o.amt ?? 0.35);
+    gl.uniform2f(pr.u.uPatSize, o.pat ? o.pat.w : 1, o.pat ? o.pat.h : 1);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, this.oneFb[this.cur ^ 1]);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    this.cur ^= 1;
+  }
+  setState(arr) { gl.bindTexture(gl.TEXTURE_2D, this.tex[this.cur]); gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, this.N, this.N, gl.RED, gl.FLOAT, arr); this.steps = 0; }
+  _read(fb) {
+    const N = this.N, out = new Float32Array(N * N);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb); gl.readPixels(0, 0, N, N, gl.RGBA, gl.FLOAT, this.buf);
+    for (let i = 0; i < N * N; i++) out[i] = this.buf[i * 4];
+    return out;
+  }
+  read() { return this._read(this.oneFb[this.cur]); }
+  readU() { return this._read(this.uFb); }      // U of the last step (input of the step that produced current A)
+}
+const patCache = new Map();
+function patternTex(sp) {
+  if (!patCache.has(sp.id)) { const p = decodeRLE(sp.cells); p.tex = texR(p.w, p.h, p.data); patCache.set(sp.id, p); }
+  return patCache.get(sp.id);
+}
+
+/* ===================== CPU REFERENCE (tests) ===================== */
+function cpuStep(A, N, K, P) {
+  const out = new Float32Array(N * N), U = new Float32Array(N * N), msk = N - 1, dt = 1 / P.T;
+  for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
+    let u = 0;
+    for (let i = 0; i < K.n; i++) u += K.taps[i * 3 + 2] * A[((y + K.taps[i * 3 + 1]) & msk) * N + ((x + K.taps[i * 3]) & msk)];
+    U[y * N + x] = u;
+    out[y * N + x] = Math.min(1, Math.max(0, A[y * N + x] + dt * growth(u, P.m, P.s, P.gn)));
+  }
+  return { A: out, U };
+}
+
+/* ===================== STATS ===================== */
+function measure(A, N) {     // mass + torus-aware centroid (circular mean)
+  let m = 0, cx = 0, sx = 0, cy = 0, sy = 0;
+  const cs = new Float32Array(N), sn = new Float32Array(N);
+  for (let i = 0; i < N; i++) { cs[i] = Math.cos(2 * Math.PI * i / N); sn[i] = Math.sin(2 * Math.PI * i / N); }
+  for (let y = 0; y < N; y++) { let row = 0, rc = 0, rs = 0;
+    for (let x = 0; x < N; x++) { const a = A[y * N + x]; if (a) { row += a; rc += a * cs[x]; rs += a * sn[x]; } }
+    m += row; cx += rc; sx += rs; cy += row * cs[y]; sy += row * sn[y]; }
+  const ang = (s, c) => ((Math.atan2(s, c) / (2 * Math.PI)) * N + N) % N;
+  return { mass: m, x: ang(sx, cx), y: ang(sy, cy) };
+}
+const torusDelta = (a, b, N) => { let d = b - a; d -= Math.round(d / N) * N; return d; };
+
+/* ===================== APP STATE ===================== */
+const SPEEDS = [5, 10, 20, 30, 60, 120, 240, 480];   // steps per second
+const S = { N: 256, sp: 0, R: 13, T: 10, m: 0.15, s: 0.015, b: [1], kn: 1, gn: 1, speed: 4, running: true, cmap: 'lenia', view: 'A', tool: 'draw', brush: 14, custom: false };
+let world = null, KER = null;
+const view = { k: 1, ox: 0, oy: 0 };    // k = zoom (1 = whole world fits), o = world coords of top-left
+let follow = true, vel = { x: 0, y: 0 };  // camera follows the centroid (smoothed, extrapolated with velocity)
+const hist = [];                          // mass history
+let lastStat = null, speedEMA = null, statusKind = '', hadLife = false;
+
+function params() { return { m: S.m, s: S.s, T: S.T, gn: S.gn }; }
+function rebuildKernel() { freeKernel(KER); KER = gpuKernel(buildKernel(S.R, S.b, S.kn)); drawKernelGraph(); }
+function newWorld(N) { if (world) world.dispose(); world = new World(N); S.N = N; fitView(); }
+
+function loadSpecies(i, keepParams) {
+  const sp = SPECIES[i]; if (!sp) return;
+  S.sp = i; S.custom = false;
+  if (!keepParams) { const from = { m: S.m, s: S.s, R: S.R, T: S.T }; Object.assign(S, { R: sp.R, T: sp.T, m: sp.m, s: sp.s, b: parseB(sp.b), kn: 1, gn: 1 }); tweenSliders(from); }
+  rebuildKernel();
+  world.clear(); hist.length = 0; lastStat = null; speedEMA = null; hadLife = true;
+  world.paint(2, { x: S.N / 2, y: S.N / 2, ang: 0, pat: patternTex(sp) });
+  world.steps = 0; vel = { x: 0, y: 0 };
+  centerView(S.N / 2, S.N / 2, Math.max(1, Math.min(4, S.N / (Math.max(sp.w, sp.h) * 5)))); setFollow(true);
+  syncAll(); writeHash();
+}
+function clearWorld() { world.clear(); hist.length = 0; lastStat = null; speedEMA = null; hadLife = false; S.custom = true; syncInfo(); }
+
+/* ===================== VIEW / CANVAS ===================== */
+let cssW = 0, cssH = 0, dpr = 1;
+function resize() {
+  const st = $('#stage'), r = st.getBoundingClientRect();
+  dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const keep = cssW ? { x: view.ox + cssW * cpp() / 2, y: view.oy + cssH * cpp() / 2 } : null;   // keep the view center on resize
+  cssW = Math.max(64, Math.floor(r.width)); cssH = Math.max(64, Math.floor(r.height));
+  if (keep && world) centerView(keep.x, keep.y);
+  cv.style.width = cssW + 'px'; cv.style.height = cssH + 'px';
+  cv.width = Math.round(cssW * dpr); cv.height = Math.round(cssH * dpr);
+}
+function cpp() { return S.N / (Math.min(cssW, cssH) * view.k); }  // world cells per CSS pixel (whole world fits the short side at k=1)
+function fitView() { centerView(S.N / 2, S.N / 2, 1); }
+function centerView(x, y, k) { if (k) view.k = k; const c = cpp(); view.ox = x - cssW * c / 2; view.oy = y - cssH * c / 2; }
+function setFollow(on) { follow = on; $('#followBtn').classList.toggle('on', on); }
+function followStep() {            // called every frame: ease the view center toward the predicted centroid
+  if (!follow || !lastStat || statusKind) return;
+  const tNow = world.steps / S.T, px = lastStat.x + vel.x * (tNow - lastStat.t), py = lastStat.y + vel.y * (tNow - lastStat.t);
+  const c = cpp(), cx = view.ox + cssW * c / 2, cy = view.oy + cssH * c / 2;
+  view.ox += torusDelta(cx, px, S.N) * 0.12; view.oy += torusDelta(cy, py, S.N) * 0.12;
+  view.ox = ((view.ox % S.N) + S.N) % S.N; view.oy = ((view.oy % S.N) + S.N) % S.N;
+}
+function screenToWorld(px, py) { const c = cpp(); return { x: view.ox + px * c, y: view.oy + py * c }; }
+function worldToScreen(wx, wy) { const c = cpp(); return { x: (wx - view.ox) / c, y: (wy - view.oy) / c }; }
+function zoomAt(f, px, py) {
+  const before = screenToWorld(px, py);
+  view.k = Math.min(16, Math.max(1, view.k * f));
+  const c = cpp(); view.ox = before.x - px * c; view.oy = before.y - py * c;
+}
+function render() {
+  const pr = PROG.render; gl.useProgram(pr.p); gl.bindVertexArray(VAO);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, world.tex[world.cur]);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, world.uTex);
+  gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, LUT_TEX);
+  gl.uniform1i(pr.u.uA, 0); gl.uniform1i(pr.u.uU, 1); gl.uniform1i(pr.u.uLut, 3);
+  gl.uniform1i(pr.u.uN, S.N); gl.uniform1i(pr.u.uView, { A: 0, U: 1, G: 2 }[S.view]); gl.uniform1i(pr.u.uGn, S.gn);
+  gl.uniform2f(pr.u.uOff, view.ox, view.oy); gl.uniform2f(pr.u.uRes, cv.width, cv.height);
+  gl.uniform1f(pr.u.uCpp, cpp() / dpr); gl.uniform1f(pr.u.uM, S.m); gl.uniform1f(pr.u.uS, S.s); gl.uniform1f(pr.u.uGrid, 0.07);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  if (stampDrag) drawStampGuide();
+}
+
+/* stamp guide overlay (2D canvas on top, created lazily) */
+let guide = null, stampDrag = null;
+function drawStampGuide() {
+  if (!guide) { guide = document.createElement('canvas'); guide.style.cssText = 'position:absolute;pointer-events:none'; $('#stage').appendChild(guide); }
+  const r = cv.getBoundingClientRect(), sr = $('#stage').getBoundingClientRect();
+  guide.style.left = (r.left - sr.left) + 'px'; guide.style.top = (r.top - sr.top) + 'px';
+  guide.width = cv.width; guide.height = cv.height; guide.style.width = cssW + 'px'; guide.style.height = cssH + 'px';
+  const g = guide.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, cssW, cssH);
+  if (!stampDrag) return;
+  const p = patternTex(SPECIES[S.sp]), c = cpp(), s0 = stampDrag;
+  g.save(); g.translate(s0.sx, s0.sy); g.rotate(s0.ang);
+  g.strokeStyle = 'rgba(124,243,200,.9)'; g.setLineDash([5, 4]); g.lineWidth = 1.5;
+  g.strokeRect(-p.w / 2 / c, -p.h / 2 / c, p.w / c, p.h / c);
+  g.setLineDash([]); g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.max(p.w, p.h) / c * 0.75, 0); g.stroke();
+  g.restore();
+}
+function clearGuide() { if (guide) guide.getContext('2d').clearRect(0, 0, guide.width, guide.height); }
+
+/* ===================== POINTER INPUT ===================== */
+const pointers = new Map(); let pinch = null, panDrag = null, lastDab = null;
+function localXY(e) { const r = cv.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+function dab(px, py) {
+  const w = screenToWorld(px, py), r = S.brush;
+  if (S.tool === 'draw') world.paint(0, { x: w.x, y: w.y, r, amt: 0.35 });
+  else if (S.tool === 'erase') world.paint(1, { x: w.x, y: w.y, r });
+  else if (S.tool === 'soup') world.paint(3, { x: w.x, y: w.y, r: r * 1.6, amt: Math.min(1, S.m * 3.7) });   // soup density scaled to μ (tested)
+  S.custom = S.custom || S.tool !== 'erase'; hist.length = 0;
+}
+function strokeTo(px, py) {
+  const c = cpp(), step = Math.max(1, S.brush / 3 / c);
+  if (!lastDab) { dab(px, py); lastDab = { x: px, y: py }; return; }
+  const d = Math.hypot(px - lastDab.x, py - lastDab.y);
+  if (d < step) return;
+  const n = Math.ceil(d / step);
+  for (let i = 1; i <= n; i++) dab(lastDab.x + (px - lastDab.x) * i / n, lastDab.y + (py - lastDab.y) * i / n);
+  lastDab = { x: px, y: py };
+}
+cv.addEventListener('pointerdown', e => {
+  cv.setPointerCapture(e.pointerId); const p = localXY(e); pointers.set(e.pointerId, p);
+  if (pointers.size === 2) {      // switch to pinch: cancel any stroke
+    lastDab = null; stampDrag = null; clearGuide();
+    const [a, b] = [...pointers.values()]; pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), cx: (a.x + b.x) / 2, cy: (a.y + b.y) / 2 }; return;
+  }
+  if (e.button === 2 || e.button === 1 || e.shiftKey) { panDrag = { x: p.x, y: p.y }; return; }
+  setFollow(false);                // editing the world: hold the camera still
+  if (S.tool === 'stamp') { stampDrag = { sx: p.x, sy: p.y, ang: 0 }; drawStampGuide(); return; }
+  if (S.tool === 'soup') { dab(p.x, p.y); return; }
+  lastDab = null; strokeTo(p.x, p.y);
+});
+cv.addEventListener('pointermove', e => {
+  if (!pointers.has(e.pointerId)) return;
+  const p = localXY(e); pointers.set(e.pointerId, p);
+  if (pinch && pointers.size >= 2) {
+    const [a, b] = [...pointers.values()], d = Math.hypot(a.x - b.x, a.y - b.y), cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2;
+    const c = cpp(); if (Math.hypot(cx - pinch.cx, cy - pinch.cy) > 2) setFollow(false); view.ox -= (cx - pinch.cx) * c; view.oy -= (cy - pinch.cy) * c;
+    if (pinch.d > 0) zoomAt(d / pinch.d, cx, cy);
+    pinch = { d, cx, cy }; return;
+  }
+  if (panDrag) { setFollow(false); const c = cpp(); view.ox -= (p.x - panDrag.x) * c; view.oy -= (p.y - panDrag.y) * c; panDrag = { x: p.x, y: p.y }; return; }
+  if (stampDrag) { const dx = p.x - stampDrag.sx, dy = p.y - stampDrag.sy; if (Math.hypot(dx, dy) > 6) stampDrag.ang = Math.atan2(dy, dx); drawStampGuide(); return; }
+  if (S.tool === 'draw' || S.tool === 'erase') strokeTo(p.x, p.y);
+});
+function endPointer(e) {
+  if (!pointers.has(e.pointerId)) return;
+  pointers.delete(e.pointerId);
+  if (pinch) { if (pointers.size < 2) pinch = null; return; }
+  if (stampDrag && e.type === 'pointerup') {
+    const w = screenToWorld(stampDrag.sx, stampDrag.sy);
+    world.paint(2, { x: w.x, y: w.y, ang: stampDrag.ang, pat: patternTex(SPECIES[S.sp]) }); hist.length = 0;
+  }
+  stampDrag = null; clearGuide(); panDrag = null; lastDab = null;
+}
+cv.addEventListener('pointerup', endPointer); cv.addEventListener('pointercancel', endPointer);
+cv.addEventListener('contextmenu', e => e.preventDefault());
+cv.addEventListener('wheel', e => { e.preventDefault(); const p = localXY(e); zoomAt(Math.exp(-e.deltaY * 0.0015), p.x, p.y); }, { passive: false });
+
+/* ===================== MAIN LOOP ===================== */
+let acc = 0, lastT = performance.now(), frames = 0, fpsT = performance.now(), fps = 0, frameNo = 0;
+const MAX_STEPS_PER_FRAME = 12;
+function stepsFor(dtSec, rate) { acc += dtSec * rate; const k = Math.min(MAX_STEPS_PER_FRAME, Math.floor(acc)); acc -= Math.floor(acc); return k; }
+function frame(now) {
+  const dt = Math.min(0.1, (now - lastT) / 1000); lastT = now;
+  if (S.running && !TESTING) { const k = stepsFor(dt, SPEEDS[S.speed]); if (k) world.step(k, KER, params()); }
+  if (!TESTING) { followStep(); render(); }
+  frames++; frameNo++;
+  if (now - fpsT > 500) { fps = frames * 1000 / (now - fpsT); frames = 0; fpsT = now; $('#sFps').textContent = fps.toFixed(0); }
+  const every = S.N >= 512 ? 30 : 12;
+  if (!TESTING && frameNo % every === 0) updateStats();
+  requestAnimationFrame(frame);
+}
+function updateStats(force) {
+  const A = world.read(), st = measure(A, S.N), tNow = world.steps / S.T;
+  if (lastStat && tNow > lastStat.t) {
+    const dT = tNow - lastStat.t, vx = torusDelta(lastStat.x, st.x, S.N) / dT, vy = torusDelta(lastStat.y, st.y, S.N) / dT, v = Math.hypot(vx, vy);
+    speedEMA = speedEMA == null ? v : speedEMA * 0.7 + v * 0.3;
+    vel = { x: vel.x * 0.5 + vx * 0.5, y: vel.y * 0.5 + vy * 0.5 };
+  }
+  if (!lastStat || tNow !== lastStat.t || force) lastStat = { ...st, t: tNow };
+  if (S.running || force) { hist.push(st.mass); if (hist.length > 240) hist.shift(); }
+  $('#sMass').textContent = st.mass < 10 ? st.mass.toFixed(2) : Math.round(st.mass).toLocaleString();
+  $('#sVel').textContent = speedEMA == null || st.mass < 1e-3 ? '—' : speedEMA.toFixed(2) + ' ' + t('perStep');
+  $('#sT').textContent = tNow.toFixed(1);
+  // status badge
+  const N2 = S.N * S.N; let kind = '';
+  if (st.mass >= 1e-3) hadLife = true;
+  if (st.mass < 1e-3) kind = hadLife ? 'extinct' : 'empty';
+  else if (st.mass > N2 * 0.45) kind = 'explode';
+  setStatus(kind);
+  if (isGraphsVisible()) { drawGrowthGraph(A); drawMassGraph(); }
+}
+function setStatus(kind) {
+  statusKind = kind; const b = $('#badge');
+  if (!kind) { b.style.display = 'none'; return; }
+  b.className = kind === 'empty' ? 'warn' : ''; b.id = 'badge'; b.textContent = t(kind); b.style.display = 'block';
+}
+
+/* ===================== GRAPHS ===================== */
+function isGraphsVisible() { const el = $('#secGraphs'); return el.offsetParent !== null; }
+function prepCanvas(c) {
+  const r = c.getBoundingClientRect(), d = window.devicePixelRatio || 1;
+  const w = Math.max(10, Math.round(r.width * d)), h = Math.max(10, Math.round(r.height * d));
+  if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
+  const g = c.getContext('2d'); g.setTransform(d, 0, 0, d, 0, 0); g.clearRect(0, 0, r.width, r.height);
+  return { g, w: r.width, h: r.height };
+}
+function axes(g, w, h, pad) { g.strokeStyle = 'rgba(255,255,255,.12)'; g.lineWidth = 1; g.beginPath(); g.moveTo(pad.l, h - pad.b + .5); g.lineTo(w - pad.r, h - pad.b + .5); g.stroke(); }
+function drawKernelGraph() {
+  if (!KER) return;
+  // 2D image
+  const c2 = $('#gK2'), r2 = c2.getBoundingClientRect(); if (r2.width) {
+    const d = window.devicePixelRatio || 1, n = Math.round(r2.width * d); c2.width = c2.height = n;
+    const g = c2.getContext('2d'), im = g.createImageData(n, n), lut = makeLUT(S.cmap);
+    let mx = 0; for (let r = 0; r <= 1; r += 0.002) mx = Math.max(mx, kernelValue(r, S.b, S.kn));
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+      const r = Math.hypot(x + .5 - n / 2, y + .5 - n / 2) / (n / 2), v = mx ? kernelValue(r, S.b, S.kn) / mx : 0, li = Math.round(v * 255) * 4, o = (y * n + x) * 4;
+      im.data[o] = lut[li]; im.data[o + 1] = lut[li + 1]; im.data[o + 2] = lut[li + 2]; im.data[o + 3] = 255;
+    }
+    g.putImageData(im, 0, 0);
+  }
+  const { g, w, h } = prepCanvas($('#gK')); if (w < 20) return;
+  const pad = { l: 4, r: 4, t: 8, b: 14 };
+  axes(g, w, h, pad);
+  let mx = 0; const pts = [];
+  for (let i = 0; i <= 200; i++) { const r = i / 200 * 2 - 1, v = kernelValue(Math.abs(r), S.b, S.kn); pts.push(v); mx = Math.max(mx, v); }
+  g.strokeStyle = '#7cf3c8'; g.lineWidth = 1.8; g.beginPath();
+  pts.forEach((v, i) => { const x = pad.l + i / 200 * (w - pad.l - pad.r), y = h - pad.b - (mx ? v / mx : 0) * (h - pad.t - pad.b); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+  g.stroke();
+  g.fillStyle = '#5d6676'; g.font = '10px ' + getComputedStyle(document.body).fontFamily; g.textAlign = 'center';
+  g.fillText('−R', pad.l + 8, h - 2); g.fillText('0', w / 2, h - 2); g.fillText('R', w - pad.r - 6, h - 2);
+  $('#gKv').textContent = `R=${S.R} · ${KER.n} ${LANG === 'ko' ? '칸' : 'cells'}`;
+}
+let lastU = null;
+function drawGrowthGraph(A) {
+  const { g, w, h } = prepCanvas($('#gG')); if (w < 20) return;
+  const pad = { l: 4, r: 4, t: 6, b: 14 };
+  const xmax = Math.min(1, Math.max(S.m * 2.2, S.m + 6 * S.s, 0.05));
+  const X = u => pad.l + u / xmax * (w - pad.l - pad.r), Y = gv => pad.t + (1 - (gv + 1) / 2) * (h - pad.t - pad.b);
+  // green band where G > 0
+  const half = S.gn === 1 ? 3 * S.s : S.s * Math.sqrt(2 * Math.log(2));
+  g.fillStyle = 'rgba(124,243,200,.10)'; g.fillRect(X(Math.max(0, S.m - half)), pad.t, X(Math.min(xmax, S.m + half)) - X(Math.max(0, S.m - half)), h - pad.t - pad.b);
+  // histogram of U over living region
+  const U = world.readU(); lastU = U;
+  const bins = 60, hb = new Float32Array(bins); let tot = 0;
+  for (let i = 0; i < U.length; i++) { const u = U[i]; if (u > 1e-4 && (A[i] > 1e-3 || u > S.m * 0.25)) { const k = Math.floor(u / xmax * bins); if (k >= 0 && k < bins) { hb[k]++; tot++; } } }
+  if (tot) { const mx = Math.max(...hb); g.fillStyle = 'rgba(98,168,255,.45)';
+    for (let k = 0; k < bins; k++) if (hb[k]) { const bh = Math.sqrt(hb[k] / mx) * (h - pad.t - pad.b); g.fillRect(X(k / bins * xmax) + .5, h - pad.b - bh, (w - pad.l - pad.r) / bins - 1, bh); } }
+  // zero line + G curve
+  g.strokeStyle = 'rgba(255,255,255,.14)'; g.beginPath(); g.moveTo(pad.l, Y(0) + .5); g.lineTo(w - pad.r, Y(0) + .5); g.stroke();
+  axes(g, w, h, pad);
+  g.strokeStyle = '#7cf3c8'; g.lineWidth = 1.8; g.beginPath();
+  for (let i = 0; i <= 240; i++) { const u = i / 240 * xmax, x = X(u), y = Y(growth(u, S.m, S.s, S.gn)); i ? g.lineTo(x, y) : g.moveTo(x, y); }
+  g.stroke();
+  g.fillStyle = '#5d6676'; g.font = '10px ' + getComputedStyle(document.body).fontFamily; g.textAlign = 'left'; g.fillText('0', pad.l, h - 2);
+  g.textAlign = 'center'; g.fillText('μ', X(S.m), h - 2); g.textAlign = 'right'; g.fillText(xmax.toFixed(2), w - pad.r, h - 2);
+  $('#gGv').textContent = `μ=${S.m} σ=${S.s}`;
+}
+function drawMassGraph() {
+  const { g, w, h } = prepCanvas($('#gM')); if (w < 20) return;
+  const pad = { l: 4, r: 4, t: 6, b: 6 };
+  axes(g, w, h, pad);
+  if (hist.length < 2) { $('#gMv').textContent = ''; return; }
+  const mx = Math.max(...hist) * 1.1 || 1;
+  g.strokeStyle = '#62a8ff'; g.lineWidth = 1.6; g.beginPath();
+  hist.forEach((v, i) => { const x = pad.l + i / 239 * (w - pad.l - pad.r), y = h - pad.b - v / mx * (h - pad.t - pad.b); i ? g.lineTo(x, y) : g.moveTo(x, y); });
+  g.stroke();
+  const a = hist[0], b = hist[hist.length - 1];
+  $('#gMv').textContent = a > 0 ? `${b >= a ? '+' : ''}${((b / a - 1) * 100).toFixed(1)}%` : '';
+}
+
+/* ===================== THUMBNAILS / GALLERY ===================== */
+function drawThumb(c, sp) {
+  const p = decodeRLE(sp.cells), n = Math.ceil(Math.max(p.w, p.h) * 1.25); c.width = c.height = n;
+  const g = c.getContext('2d'), lut = makeLUT(S.cmap), im = g.createImageData(n, n);
+  const ox = Math.floor((n - p.w) / 2), oy = Math.floor((n - p.h) / 2);
+  for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+    const px = x - ox, py = y - oy;
+    const v = (px >= 0 && py >= 0 && px < p.w && py < p.h) ? p.data[py * p.w + px] : 0, li = Math.round(v * 255) * 4, o = (y * n + x) * 4;
+    im.data[o] = lut[li]; im.data[o + 1] = lut[li + 1]; im.data[o + 2] = lut[li + 2]; im.data[o + 3] = 255;
+  }
+  g.putImageData(im, 0, 0);
+}
+function buildGallery() {
+  const gal = $('#gallery'); gal.innerHTML = '';
+  SPECIES.forEach((sp, i) => {
+    const b = document.createElement('button'); b.className = 'card'; b.dataset.i = i;
+    b.innerHTML = `<canvas></canvas><span class="nm"></span><span class="lt"></span>`;
+    b.onclick = () => { loadSpecies(i); if (!S.running) { S.running = true; syncPlay(); } };
+    gal.appendChild(b); drawThumb(b.querySelector('canvas'), sp);
+  });
+  syncGallery();
+}
+function syncGallery() {
+  $$('#gallery .card').forEach(b => {
+    const sp = SPECIES[+b.dataset.i];
+    b.classList.toggle('on', +b.dataset.i === S.sp && !S.custom);
+    b.querySelector('.nm').textContent = sp[LANG].name;
+    b.querySelector('.lt').innerHTML = `${sp.name}${+b.dataset.i < 9 ? `<span class="kbd">${+b.dataset.i + 1}</span>` : ''}`;
+    b.title = sp[LANG].desc;
+  });
+}
+
+/* ===================== PARAMETER UI ===================== */
+const PDEF = [
+  { k: 'm', lab: 'μ', tip: 'pMu', min: 0.01, max: 0.6, step: 0.001, dec: 3 },
+  { k: 's', lab: 'σ', tip: 'pSigma', min: 0.001, max: 0.2, step: 0.0001, dec: 4, log: true },
+  { k: 'R', lab: 'R', tip: 'pR', min: 4, max: 30, step: 1, dec: 0, int: true },
+  { k: 'T', lab: 'T', tip: 'pT', min: 1, max: 100, step: 1, dec: 0, int: true, log: true },
+];
+const toSlider = (d, v) => d.log ? Math.round(Math.log(v / d.min) / Math.log(d.max / d.min) * 1000) : v;
+const fromSlider = (d, x) => { let v = d.log ? d.min * Math.pow(d.max / d.min, x / 1000) : +x; if (d.int) v = Math.round(v); else v = +v.toFixed(d.dec); return v; };
+function buildParams() {
+  const box = $('#prows'); box.innerHTML = '';
+  for (const d of PDEF) {
+    const row = document.createElement('div'); row.className = 'prow'; row.dataset.k = d.k;
+    row.innerHTML = `<label>${d.lab}</label><div class="rw"><input type="range" min="${d.log ? 0 : d.min}" max="${d.log ? 1000 : d.max}" step="${d.log ? 1 : d.step}"><span class="tick"></span></div><input type="number" min="${d.min}" max="${d.max}" step="${d.step}">`;
+    const rng = row.querySelector('input[type=range]'), num = row.querySelector('input[type=number]');
+    rng.oninput = () => setParam(d, fromSlider(d, rng.value));
+    num.onchange = () => { const v = Math.min(d.max, Math.max(d.min, +num.value || d.min)); setParam(d, d.int ? Math.round(v) : v); };
+    box.appendChild(row);
+  }
+  $('#ringMinus').onclick = () => { if (S.b.length > 1) { S.b.pop(); kernelChanged(); } };
+  $('#ringPlus').onclick = () => { if (S.b.length < 4) { S.b.push(1); kernelChanged(); } };
+  $$('#knSeg .btn').forEach(b => b.onclick = () => { S.kn = +b.dataset.v; kernelChanged(); });
+  $$('#gnSeg .btn').forEach(b => b.onclick = () => { S.gn = +b.dataset.v; S.custom = true; syncAll(); writeHash(); });
+}
+function setParam(d, v) {
+  S[d.k] = v; S.custom = true;
+  if (d.k === 'R') { rebuildKernel(); }
+  syncParams(true); syncInfo(); writeHash(); drawKernelGraph();
+}
+function kernelChanged() { S.custom = true; rebuildKernel(); syncAll(); writeHash(); }
+function syncParams(skipActive) {
+  const sp = SPECIES[S.sp];
+  for (const d of PDEF) {
+    const row = $(`.prow[data-k="${d.k}"]`), rng = row.querySelector('input[type=range]'), num = row.querySelector('input[type=number]');
+    if (!(skipActive && document.activeElement === rng)) rng.value = toSlider(d, S[d.k]);
+    if (document.activeElement !== num) num.value = S[d.k];
+    row.title = t(d.tip); row.querySelector('label').title = t(d.tip);
+    const tick = row.querySelector('.tick'), ov = sp ? sp[d.k] : null;
+    if (ov != null) { const lo = d.log ? 0 : d.min, hi = d.log ? 1000 : d.max; tick.style.display = ''; tick.style.left = ((toSlider(d, ov) - lo) / (hi - lo) * 100) + '%'; }
+    else tick.style.display = 'none';
+  }
+  const rb = $('#rings'); rb.innerHTML = '';
+  S.b.forEach((v, i) => {
+    const row = document.createElement('div'); row.className = 'prow';
+    row.innerHTML = `<label>β${i + 1}</label><div class="rw"><input type="range" min="0" max="1" step="${1 / 12}"></div><input type="number" min="0" max="1" step="0.0833">`;
+    const rng = row.querySelector('input[type=range]'), num = row.querySelector('input[type=number]');
+    rng.value = v; num.value = +v.toFixed(3);
+    rng.oninput = () => { S.b[i] = +rng.value; num.value = +S.b[i].toFixed(3); kernelChanged(); };
+    num.onchange = () => { S.b[i] = Math.min(1, Math.max(0, +num.value || 0)); kernelChanged(); };
+    rb.appendChild(row);
+  });
+  $$('#knSeg .btn').forEach(b => b.classList.toggle('on', +b.dataset.v === S.kn));
+  $$('#gnSeg .btn').forEach(b => b.classList.toggle('on', +b.dataset.v === S.gn));
+}
+let tweenId = 0;
+function tweenSliders(from) {          // purely visual: slide the thumbs to the new values
+  const id = ++tweenId, t0 = performance.now(), to = { m: S.m, s: S.s, R: S.R, T: S.T };
+  const tick = now => {
+    if (id !== tweenId) return;
+    const f = Math.min(1, (now - t0) / 400), e = 1 - Math.pow(1 - f, 3);
+    for (const d of PDEF) {
+      const rng = $(`.prow[data-k="${d.k}"] input[type=range]`); if (!rng) continue;
+      const a = toSlider(d, from[d.k]), b = toSlider(d, to[d.k]); rng.value = a + (b - a) * e;
+    }
+    if (f < 1) requestAnimationFrame(tick); else syncParams();
+  };
+  requestAnimationFrame(tick);
+}
+
+/* ===================== TEXT / SYNC ===================== */
+function syncText() {
+  document.documentElement.lang = LANG;
+  $$('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  $$('[data-i18n-title]').forEach(el => { el.title = t(el.dataset.i18nTitle); el.setAttribute('aria-label', t(el.dataset.i18nTitle)); });
+  $('#langBtn').textContent = LANG === 'ko' ? 'EN' : '한국어';
+  $('#helpBtn').title = t('help');
+  const cs = $('#cmapSel'); const cur = S.cmap; cs.innerHTML = Object.keys(CMAPS).map(k => `<option value="${k}">${t('cm_' + k)}</option>`).join(''); cs.value = cur;
+  syncTool(); syncGallery(); syncParams(); syncInfo(); syncSpeed(); setStatus(statusKind);
+  if ($('#overlay').classList.contains('on')) $('#ovBody').innerHTML = t('helpHtml');
+}
+function syncInfo() {
+  const sp = SPECIES[S.sp];
+  if (!sp) { $('#infoT').textContent = ''; return; }
+  $('#infoT').innerHTML = `${sp[LANG].name}<i>${sp.name}</i>`;
+  $('#infoD').textContent = S.custom ? t('custom') + ' · μ ' + S.m + ' · σ ' + S.s + ' · R ' + S.R : sp[LANG].desc;
+}
+function syncTool() {
+  $$('#toolSeg .btn').forEach(b => b.classList.toggle('on', b.dataset.v === S.tool));
+  $('#toolHint').textContent = t({ draw: 'hDraw', erase: 'hErase', stamp: 'hStamp', soup: 'hSoup' }[S.tool]);
+  $('#brushOut').textContent = S.brush; cv.style.cursor = S.tool === 'stamp' ? 'copy' : 'crosshair';
+}
+const NARROW = matchMedia('(max-width: 899px)');
+function syncSpeed() { $('#speed').value = S.speed; $('#speedOut').textContent = SPEEDS[S.speed] + (NARROW.matches ? '/s' : LANG === 'ko' ? '스텝/초' : ' st/s'); }
+function syncPlay() { $('#playBtn').textContent = S.running ? '❚❚' : '▶'; }
+function syncView() { $$('#viewSeg .btn').forEach(b => b.classList.toggle('on', b.dataset.v === S.view)); }
+function syncAll() { syncParams(); syncGallery(); syncInfo(); syncView(); syncPlay(); drawKernelGraph(); }
+function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('on'), 1600); }
+
+/* ===================== URL HASH ===================== */
+function stateToHash() {
+  const sp = SPECIES[S.sp];
+  const q = new URLSearchParams({ s: sp ? sp.id : '', mu: S.m, sigma: S.s, R: S.R, T: S.T, b: S.b.map(v => +v.toFixed(4)).join(','), kn: S.kn, gn: S.gn, N: S.N, cm: S.cmap });
+  return '#' + q.toString();
+}
+function parseHash(h) {
+  const q = new URLSearchParams(String(h).replace(/^#/, '')), o = {};
+  if (q.has('s')) { const i = SPECIES.findIndex(x => x.id === q.get('s')); if (i >= 0) o.sp = i; }
+  for (const [k, key, lo, hi] of [['mu', 'm', 0.001, 1], ['sigma', 's', 0.0001, 0.5], ['R', 'R', 2, 40], ['T', 'T', 1, 1000]]) if (q.has(k) && isFinite(+q.get(k))) o[key] = Math.min(hi, Math.max(lo, +q.get(k)));
+  if (o.R) o.R = Math.round(o.R);
+  if (q.has('b')) { const b = q.get('b').split(',').map(Number).filter(v => isFinite(v) && v >= 0 && v <= 1); if (b.length >= 1 && b.length <= 4) o.b = b; }
+  for (const k of ['kn', 'gn']) if (['1', '2'].includes(q.get(k))) o[k] = +q.get(k);
+  if (['128', '256', '512'].includes(q.get('N'))) o.N = +q.get('N');
+  if (CMAPS[q.get('cm')]) o.cmap = q.get('cm');
+  return o;
+}
+let hashTimer = 0, applyingHash = false;
+function writeHash() { if (applyingHash || TESTING) return; clearTimeout(hashTimer); hashTimer = setTimeout(() => history.replaceState(null, '', location.pathname + location.search + stateToHash()), 250); }
+function applyHash() {
+  const o = parseHash(location.hash); if (!Object.keys(o).length) return false;
+  applyingHash = true;
+  if (o.N && o.N !== S.N) { newWorld(o.N); $('#gridSel').value = o.N; }
+  if (o.cmap) { S.cmap = o.cmap; setLUT(S.cmap); $('#cmapSel').value = S.cmap; buildGallery(); }
+  loadSpecies(o.sp ?? S.sp);
+  const sp = SPECIES[S.sp], P = { R: sp.R, T: sp.T, m: sp.m, s: sp.s, b: parseB(sp.b), kn: 1, gn: 1 };
+  let changed = false;
+  for (const k of ['m', 's', 'R', 'T', 'kn', 'gn']) if (o[k] != null && o[k] !== P[k]) { S[k] = o[k]; changed = true; }
+  if (o.b && o.b.join() !== P.b.map(v => +v.toFixed(4)).join()) { S.b = o.b; changed = true; }
+  if (changed) { S.custom = true; rebuildKernel(); syncAll(); }
+  applyingHash = false; return true;
+}
+
+/* ===================== CONTROLS ===================== */
+function bindUI() {
+  $('#playBtn').onclick = () => { S.running = !S.running; syncPlay(); };
+  $('#stepBtn').onclick = () => { S.running = false; syncPlay(); world.step(1, KER, params()); updateStats(true); };
+  $('#speed').oninput = e => { S.speed = +e.target.value; syncSpeed(); };
+  $('#resetBtn').onclick = () => loadSpecies(S.sp, true);
+  $('#restoreBtn').onclick = () => loadSpecies(S.sp);
+  $('#clearBtn').onclick = () => clearWorld();
+  $('#gridSel').onchange = e => { newWorld(+e.target.value); loadSpecies(S.sp, true); };
+  $('#cmapSel').onchange = e => { S.cmap = e.target.value; setLUT(S.cmap); buildGallery(); drawKernelGraph(); writeHash(); };
+  $('#langBtn').onclick = () => { LANG = LANG === 'ko' ? 'en' : 'ko'; try { localStorage.setItem('leniaLang', LANG); } catch (e) {} syncText(); drawKernelGraph(); };
+  $('#helpBtn').onclick = () => { $('#ovBody').innerHTML = t('helpHtml'); $('#overlay').classList.add('on'); $('#ovClose').focus(); };
+  $('#ovClose').onclick = () => $('#overlay').classList.remove('on');
+  $('#overlay').onclick = e => { if (e.target.id === 'overlay') $('#overlay').classList.remove('on'); };
+  $('#info').onclick = () => $('#info').classList.toggle('min');
+  $('#zin').onclick = () => zoomAt(1.5, cssW / 2, cssH / 2);
+  $('#zout').onclick = () => zoomAt(1 / 1.5, cssW / 2, cssH / 2);
+  $('#zfit').onclick = () => { fitView(); setFollow(false); };
+  $('#followBtn').onclick = () => setFollow(!follow);
+  $$('#toolSeg .btn').forEach(b => b.onclick = () => { S.tool = b.dataset.v; syncTool(); });
+  $$('#viewSeg .btn').forEach(b => b.onclick = () => { S.view = b.dataset.v; syncView(); });
+  $('#brushSize').oninput = e => { S.brush = +e.target.value; syncTool(); };
+  $$('#tabs .btn').forEach(b => b.onclick = () => { document.body.dataset.tab = b.dataset.tab; syncTabs(); requestAnimationFrame(() => { drawKernelGraph(); if (lastStat) updateStats(true); }); });
+  $('#linkBtn').onclick = async () => {
+    const url = location.href.split('#')[0] + stateToHash();
+    try { await navigator.clipboard.writeText(url); toast(t('copied')); } catch (e) { history.replaceState(null, '', url); toast(t('copyFail')); }
+  };
+  $('#pngBtn').onclick = () => {
+    render(); const a = document.createElement('a');
+    a.download = `lenia-${SPECIES[S.sp].id}-${world.steps}.png`; a.href = cv.toDataURL('image/png'); a.click(); toast(t('saved'));
+  };
+  window.addEventListener('keydown', e => {
+    if (e.target.matches('input, select, textarea') || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === 'Escape') { $('#overlay').classList.remove('on'); return; }
+    if ($('#overlay').classList.contains('on')) return;
+    const k = e.key.toLowerCase();
+    if (e.key === ' ') { e.preventDefault(); $('#playBtn').click(); }
+    else if (e.key === '.') $('#stepBtn').click();
+    else if (k === 'r') loadSpecies(S.sp, true);
+    else if (k === 'c') clearWorld();
+    else if (/^[1-9]$/.test(e.key) && SPECIES[+e.key - 1]) loadSpecies(+e.key - 1);
+    else if ({ d: 'draw', e: 'erase', s: 'stamp', n: 'soup' }[k]) { S.tool = { d: 'draw', e: 'erase', s: 'stamp', n: 'soup' }[k]; syncTool(); }
+    else if (k === 'f') setFollow(!follow);
+    else if (e.key === '+' || e.key === '=') zoomAt(1.5, cssW / 2, cssH / 2);
+    else if (e.key === '-') zoomAt(1 / 1.5, cssW / 2, cssH / 2);
+  });
+  window.addEventListener('hashchange', () => { if (!TESTING) applyHash(); });
+  new ResizeObserver(() => { resize(); drawKernelGraph(); }).observe($('#stage'));
+}
+function syncTabs() { $$('#tabs .btn').forEach(b => b.classList.toggle('on', b.dataset.tab === document.body.dataset.tab)); }
+
+/* ===================== UNIT TESTS (?test=1) ===================== */
+let TESTING = new URLSearchParams(location.search).get('test') === '1';
+async function runTests() {
+  const out = [], ok = (name, pass, detail) => { out.push({ name, pass, detail }); console.log((pass ? 'PASS ' : 'FAIL ') + name + ' — ' + detail); };
+  const box = $('#testOut'); box.style.display = 'block'; box.innerHTML = `<b>${t('testsRun')}</b>`;
+  const tick = () => new Promise(r => setTimeout(r, 0));
+  const P0 = { m: 0.15, s: 0.015, T: 10, gn: 1 };
+  const maxDiff = (a, b) => { let m = 0; for (let i = 0; i < a.length; i++) m = Math.max(m, Math.abs(a[i] - b[i])); return m; };
+  const sum = a => { let s = 0; for (let i = 0; i < a.length; i++) s += a[i]; return s; };
+  const rnd = seed => () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+  const soup = (N, seed, frac) => { const r = rnd(seed), a = new Float32Array(N * N); for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) if (Math.hypot(x - N / 2, y - N / 2) < N * frac) a[y * N + x] = r(); return a; };
+  const tw = [];   // test worlds to dispose
+  const mkW = N => { const w = new World(N); tw.push(w); return w; };
+  try {
+  // 1. kernel normalization
+  { let det = [], pass = true;
+    for (const [R, b, kn] of [[13, [1], 1], [18, [0.5, 1, 2 / 3], 1], [10, [1, 1 / 3], 2], [27, [1 / 4, 1, 0, 2 / 3], 1]]) {
+      const K = buildKernel(R, b, kn); let s = 0; for (let i = 0; i < K.n; i++) s += K.taps[i * 3 + 2];
+      if (Math.abs(s - 1) > 1e-5) pass = false; det.push(`R=${R} β=[${b.map(v => +v.toFixed(2))}] kn=${kn}: Σ=${s.toFixed(6)} (${K.n})`); }
+    ok('1. 커널 합 = 1 (정규화)', pass, det.join(' · ')); }
+  // 2. growth function
+  { const g1 = growth(0.15, 0.15, 0.015, 1), g2 = growth(0.15, 0.15, 0.015, 2), f1 = growth(0.15 + 0.15, 0.15, 0.015, 1), f2 = growth(0.0, 0.15, 0.015, 2);
+    ok('2. 성장 함수 G(μ)=1, 멀면 −1', g1 === 1 && g2 === 1 && f1 === -1 && Math.abs(f2 + 1) < 1e-9, `다항 G(μ)=${g1}, 가우스 G(μ)=${g2}, 다항 G(μ+10σ)=${f1}, 가우스 G(0)=${f2.toFixed(9)}`); }
+  // 3. RLE decode vs python reference
+  { let pass = true, bad = [];
+    for (const sp of SPECIES) { const p = decodeRLE(sp.cells), s = sum(p.data);
+      if (p.w !== sp.w || p.h !== sp.h || Math.abs(s - sp.sum) > 0.01) { pass = false; bad.push(`${sp.name}: ${p.h}×${p.w} Σ${s.toFixed(3)} (기대 ${sp.h}×${sp.w} Σ${sp.sum})`); } }
+    ok('3. RLE 해독 = Python 기준값 (12종 크기·합)', pass, pass ? `${SPECIES.length}종 모두 일치` : bad.join(' · ')); }
+  await tick();
+  const K13 = gpuKernel(buildKernel(13, [1], 1));
+  // 4. empty stays empty
+  { const w = mkW(64); w.step(100, K13, P0); const s = sum(w.read());
+    ok('4. 빈 격자는 100스텝 뒤에도 빈 격자', s === 0, `질량 ${s}`); }
+  // 5. full grid dies
+  { const w = mkW(64); w.setState(new Float32Array(64 * 64).fill(1)); w.step(12, K13, P0); const s = sum(w.read());
+    ok('5. 꽉 찬 격자(A=1)는 소멸 (G<0)', s === 0, `12스텝 뒤 질량 ${s}`); }
+  // 6. CPU vs GPU
+  { const N = 64, a0 = soup(N, 7, 0.3); let det = [], pass = true;
+    for (const [R, b, kn, gn, m, s] of [[13, [1], 1, 1, 0.15, 0.015], [10, [0.5, 1], 2, 2, 0.27, 0.044]]) {
+      const K = buildKernel(R, b, kn), Kg = gpuKernel(buildKernel(R, b, kn)), P = { m, s, T: 10, gn };
+      const w = mkW(N); w.setState(a0); let A = a0;
+      for (let i = 0; i < 10; i++) A = cpuStep(A, N, K, P).A;
+      w.step(10, Kg, P); const d = maxDiff(A, w.read()); freeKernel(Kg);
+      if (!(d < 1e-4)) pass = false; det.push(`kn=${kn} gn=${gn}: 최대 오차 ${d.toExponential(2)}`); }
+    ok('6. CPU 기준 구현 = GPU 결과 (64², 10스텝)', pass, det.join(' · ') + (FMT.half ? ' (half-float 기기)' : '')); }
+  await tick();
+  // 7. torus wrap: pattern straddling the corner, CPU vs GPU
+  { const N = 64, sp = SPECIES[0], p = decodeRLE(sp.cells), a0 = new Float32Array(N * N);
+    for (let y = 0; y < p.h; y++) for (let x = 0; x < p.w; x++) a0[((y + N - 8) % N) * N + ((x + N - 9) % N)] = p.data[y * p.w + x];
+    const K = buildKernel(13, [1], 1); let A = a0; for (let i = 0; i < 8; i++) A = cpuStep(A, N, K, P0).A;
+    const w = mkW(N); w.setState(a0); w.step(8, K13, P0); const d = maxDiff(A, w.read());
+    ok('7. 토러스: 모서리에 걸친 생물도 CPU와 같게 감김', d < 1e-4, `최대 오차 ${d.toExponential(2)}, 질량 ${sum(A).toFixed(2)}`); }
+  // 8. Orbium survives 1000 steps and moves at the python reference speed
+  { const N = 128, w = mkW(N), sp = SPECIES[0]; w.paint(2, { x: N / 2, y: N / 2, ang: 0, pat: patternTex(sp) });
+    const m0 = sum(w.read()); let prev = measure(w.read(), N), dx = 0, dy = 0, mn = 9, mx = 0;
+    for (let i = 0; i < 20; i++) { w.step(50, K13, P0); const st = measure(w.read(), N); dx += torusDelta(prev.x, st.x, N); dy += torusDelta(prev.y, st.y, N); prev = st; mn = Math.min(mn, st.mass / m0); mx = Math.max(mx, st.mass / m0); await tick(); }
+    const v = Math.hypot(dx, dy) / 100;   // cells per unit time (1000 steps, T=10 → t=100)
+    ok('8. 오비움: 1000스텝 생존 + Python 기준 속도와 일치', mn > 0.85 && mx < 1.15 && Math.abs(v - sp.speed) / sp.speed < 0.1,
+      `질량 비율 ${mn.toFixed(3)}~${mx.toFixed(3)}, 속도 ${v.toFixed(3)} 칸/t (Python ${sp.speed})`); }
+  // 9. sensitivity: wrong mu kills/explodes Orbium
+  { const N = 128, sp = SPECIES[0], res = [];
+    for (const m of [0.12, 0.19]) { const w = mkW(N); w.paint(2, { x: N / 2, y: N / 2, ang: 0, pat: patternTex(sp) }); const m0 = sum(w.read());
+      w.step(600, K13, { ...P0, m }); const r = sum(w.read()) / m0; res.push([m, r]); await tick(); }
+    ok('9. μ 민감도: μ=0.12, 0.19에서 오비움이 무너짐', res.every(([, r]) => r < 0.5 || r > 3), res.map(([m, r]) => `μ=${m}: 질량 비율 ${r.toFixed(2)}`).join(' · ')); }
+  // 10. all species survive; movers move, spinners stay
+  { let pass = true, det = [];
+    for (const sp of SPECIES) {
+      const N = Math.max(...[sp.w, sp.h]) * 3 > 128 ? 256 : 128, w = mkW(N), K = gpuKernel(buildKernel(sp.R, parseB(sp.b), 1)), P = { m: sp.m, s: sp.s, T: sp.T, gn: 1 };
+      w.paint(2, { x: N / 2, y: N / 2, ang: 0, pat: patternTex(sp) });
+      const st0 = measure(w.read(), N); let prev = st0, dx = 0, dy = 0, mn = 9, mx = 0;
+      for (let i = 0; i < 10; i++) { w.step(30, K, P); const st = measure(w.read(), N); dx += torusDelta(prev.x, st.x, N); dy += torusDelta(prev.y, st.y, N); prev = st; mn = Math.min(mn, st.mass / st0.mass); mx = Math.max(mx, st.mass / st0.mass); }
+      const v = Math.hypot(dx, dy) / (300 / sp.T), mover = sp.speed > 1, good = mn > 0.8 && mx < 1.25 && (mover ? v > 1 : v < 1);
+      if (!good) pass = false; det.push(`${sp.name.split(' ')[0]} ${mn.toFixed(2)}~${mx.toFixed(2)} v=${v.toFixed(2)}${good ? '' : ' ✘'}`);
+      freeKernel(K); w.dispose(); tw.splice(tw.indexOf(w), 1); await tick();
+    }
+    ok('10. 12종 모두 300스텝 생존 + 이동형/제자리형 구분 일치', pass, det.join(' · ')); }
+  // 11. determinism
+  { const a0 = soup(64, 3, 0.35), w1 = mkW(64), w2 = mkW(64); w1.setState(a0); w2.setState(a0);
+    w1.step(50, K13, P0); for (let i = 0; i < 50; i++) w2.step(1, K13, P0);
+    const d = maxDiff(w1.read(), w2.read());
+    ok('11. 결정성: 50스텝 한 번 = 1스텝 50번', d === 0, `차이 ${d}`); }
+  // 12. stamp at angle 0 reproduces the pattern exactly
+  { let pass = true, det = [];
+    for (const sp of [SPECIES[0], SPECIES[7]]) { const w = mkW(128), p = patternTex(sp); w.paint(2, { x: 64, y: 64, ang: 0, pat: p }); const s = sum(w.read());
+      if (Math.abs(s - sp.sum) > 0.02) pass = false; det.push(`${sp.name}: Σ ${s.toFixed(3)} / ${sp.sum}`); }
+    ok('12. 생물 찍기(각도 0) = 원본 패턴', pass, det.join(' · ')); }
+  // 13. rotated stamp keeps mass (bilinear) within 3%
+  { const w = mkW(128), sp = SPECIES[0], p = patternTex(sp); w.paint(2, { x: 64, y: 64, ang: 0.7, pat: p }); const s = sum(w.read());
+    ok('13. 회전해서 찍어도 질량 유지 (±3%)', Math.abs(s / sp.sum - 1) < 0.03, `Σ ${s.toFixed(2)} / ${sp.sum}`); }
+  // 14. erase brush
+  { const w = mkW(128), sp = SPECIES[0]; w.paint(2, { x: 64, y: 64, ang: 0, pat: patternTex(sp) }); w.paint(1, { x: 64, y: 64, r: 20 }); const s = sum(w.read());
+    ok('14. 지우개로 생물 전체 삭제', s < 1e-6, `남은 질량 ${s}`); }
+  // 15. brush on the torus seam paints both sides
+  { const w = mkW(64); w.paint(0, { x: 0.5, y: 32.5, r: 4, amt: 1 }); const A = w.read();
+    ok('15. 붓이 경계를 넘으면 반대편에도 칠해짐', A[32 * 64 + 0] > 0.9 && A[32 * 64 + 63] > 0.5 && A[32 * 64 + 1] > 0.5, `x=0: ${A[32 * 64].toFixed(2)}, x=63: ${A[32 * 64 + 63].toFixed(2)}, x=1: ${A[32 * 64 + 1].toFixed(2)}`); }
+  // 16. screen ↔ world mapping under zoom/pan
+  { const saved = { ...view }, sw = cssW, sh = cssH; cssW = 500; cssH = 380; view.k = 3.2; view.ox = 40.5; view.oy = 210; let err = 0;
+    for (const [x, y] of [[0, 0], [123, 456], [499, 17]]) { const w = screenToWorld(x, y), s = worldToScreen(w.x, w.y); err = Math.max(err, Math.abs(s.x - x), Math.abs(s.y - y)); }
+    const before = screenToWorld(250, 100); zoomAt(1.7, 250, 100); const after = screenToWorld(250, 100);
+    const drift = Math.hypot(after.x - before.x, after.y - before.y);
+    Object.assign(view, saved); cssW = sw; cssH = sh;
+    ok('16. 화면↔세계 좌표 변환 + 커서 기준 확대', err < 1e-9 && drift < 1e-9, `왕복 오차 ${err.toExponential(1)}, 확대 시 커서 아래 점 이동 ${drift.toExponential(1)}`); }
+  // 17. URL hash round trip
+  { const save = { ...S, b: S.b.slice() };
+    Object.assign(S, { sp: 3, m: 0.1234, s: 0.0123, R: 17, T: 25, b: [0.5, 1, 0.25], kn: 2, gn: 2, N: 512, cmap: 'neon' });
+    const h = stateToHash(), o = parseHash(h);
+    const pass = o.sp === 3 && o.m === 0.1234 && o.s === 0.0123 && o.R === 17 && o.T === 25 && o.b.join() === '0.5,1,0.25' && o.kn === 2 && o.gn === 2 && o.N === 512 && o.cmap === 'neon';
+    const junk = parseHash('#mu=abc&R=999&b=5,5&N=300&cm=x');
+    Object.assign(S, save);
+    ok('17. URL 해시 저장 ↔ 불러오기 (+ 잘못된 값 거르기)', pass && junk.m === undefined && junk.R === 40 && !junk.b && !junk.N && !junk.cmap, h); }
+  // 18. LUTs monotonic in luminance
+  { let pass = true, det = [];
+    for (const k of Object.keys(CMAPS)) { const L = makeLUT(k); let mono = true; for (let i = 1; i < 256; i++) if (luminance(L[i * 4], L[i * 4 + 1], L[i * 4 + 2]) < luminance(L[i * 4 - 4], L[i * 4 - 3], L[i * 4 - 2]) - 0.5) mono = false;
+      if (!mono) pass = false; det.push(`${k}: ${mono ? '단조' : '✘'}`); }
+    ok('18. 컬러맵 4종 밝기가 0→1로 단조 증가', pass, det.join(' · ')); }
+  // 19. i18n keys
+  { const a = Object.keys(I18N.ko).sort().join(), b = Object.keys(I18N.en).sort().join(), sk = SPECIES.every(s => s.ko && s.en && s.ko.name && s.en.name && s.ko.desc && s.en.desc);
+    const used = $$('[data-i18n]').map(e => e.dataset.i18n).concat($$('[data-i18n-title]').map(e => e.dataset.i18nTitle)).filter(k => !(k in I18N.ko) || !(k in I18N.en));
+    ok('19. 한국어/영어 키 일치 (+ 12종 이름·설명)', a === b && sk && used.length === 0, `ko ${Object.keys(I18N.ko).length}개, en ${Object.keys(I18N.en).length}개${used.length ? ', 없는 키: ' + used : ''}`); }
+  // 20. step scheduler: steps = rate × time
+  { const accSave = acc; acc = 0; let n = 0; for (let i = 0; i < 600; i++) n += stepsFor(1 / 60, 30); const n2 = (() => { acc = 0; let k = 0; for (let i = 0; i < 100; i++) k += stepsFor(1 / 144, 240); return k; })(); acc = accSave;
+    ok('20. 속도 조절: 초당 스텝 수 = 설정값', Math.abs(n - 300) <= 1 && Math.abs(n2 - Math.round(100 / 144 * 240)) <= 1, `30/s × 10초 → ${n}스텝, 240/s × 100프레임(144Hz) → ${n2}스텝`); }
+  } catch (e) { ok('예외 발생', false, String(e && e.stack || e)); }
+  for (const w of tw) w.dispose();
+  const nPass = out.filter(o => o.pass).length;
+  box.innerHTML = `<h3 style="margin-top:0">${t('testsTitle')}: ${nPass} / ${out.length} ${LANG === 'ko' ? '통과' : 'passed'}</h3>` + out.map(o => `<div class="${o.pass ? 'pass' : 'fail'}">${o.pass ? '✔' : '✘'} <b>${o.name}</b><br><span style="color:var(--muted)">${o.detail}</span></div>`).join('') + `<p><button class="btn" onclick="this.closest('#testOut').style.display='none'">${t('close')}</button></p>`;
+  document.title = `TESTS ${nPass}/${out.length} ${nPass === out.length ? 'PASS' : 'FAIL'}`;
+  window.__testResults = out;
+}
+
+/* ===================== BOOT ===================== */
+(async function boot() {
+  SPECIES.forEach(sp => { sp.id = sp.name.toLowerCase().replace(/[^a-z]+/g, '-'); });
+  if (!gl || !FMT) { const n = $('#nogl'); n.style.display = 'flex'; n.textContent = t('noGL'); syncText(); return; }
+  try { initGL(); } catch (e) { const n = $('#nogl'); n.style.display = 'flex'; n.textContent = t('noGL') + ' (' + e.message + ')'; console.error(e); return; }
+  try { const c = localStorage.getItem('leniaCmap'); if (CMAPS[c]) S.cmap = c; } catch (e) {}
+  setLUT(S.cmap);
+  buildParams(); buildGallery(); bindUI(); syncTabs(); resize();
+  newWorld(S.N);
+  syncText();
+  if (matchMedia('(max-width: 599px)').matches) $('#info').classList.add('min');   // phones: title only, tap for the description
+  NARROW.addEventListener('change', syncSpeed);
+  if (!applyHash()) loadSpecies(0);
+  $('#cmapSel').addEventListener('change', () => { try { localStorage.setItem('leniaCmap', S.cmap); } catch (e) {} });
+  requestAnimationFrame(frame);
+  if (TESTING) { await runTests(); loadSpecies(0); TESTING_DONE(); }
+})();
+function TESTING_DONE() { /* tests finished: keep the page paused so results stay readable */ S.running = false; syncPlay(); TESTING = false; window.__testingDone = true; }
+</script>
+</body>
+</html>
