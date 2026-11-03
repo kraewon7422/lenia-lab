@@ -50,6 +50,11 @@ section+section{margin-top:18px}
 .card{background:#18191b;border:1px solid var(--line);border-radius:var(--r);padding:6px;text-align:left;display:flex;flex-direction:column;gap:4px;min-width:0}
 .card:hover{border-color:var(--line2)}
 .card{position:relative;cursor:pointer}
+.card .nmrow{display:flex;align-items:center;gap:4px;min-width:0}
+.card .nmrow .nm{flex:1 1 auto;min-width:0}
+.card .ren{flex:0 0 auto;min-height:24px;min-width:24px;padding:0;border-radius:6px;background:transparent;border:1px solid transparent;color:var(--muted);font-size:13px}
+.card .ren:hover{border-color:var(--line2);color:var(--text)}
+.card .renin{width:100%;min-width:0;background:var(--bg2);border:1px solid var(--acc);border-radius:5px;padding:2px 5px;font-size:12px}
 .card .cdel{position:absolute;top:4px;right:4px;min-height:24px;min-width:24px;padding:0 6px;border-radius:6px;font-size:13px;line-height:22px;background:#1b1c1e;border:1px solid var(--line2)}
 .card .ckind{position:absolute;left:10px;top:10px;font-size:10.5px;background:rgba(14,15,16,.86);border:1px solid var(--line2);border-radius:5px;padding:0 5px;color:var(--text)}
 .disc{margin-top:16px;border-top:1px solid var(--line);padding-top:10px}
@@ -354,7 +359,7 @@ const I18N = {
     coach:'이 생물은 μ가 0.15 근처일 때만 살 수 있어요. μ를 조금만 바꾸면 어떻게 될까요?', coachTry:'μ 바꿔 보기', coachX:'닫기',
     stps:'스텝/초', slowT:'커널이 커서 GPU가 설정 속도를 따라가지 못해요. 실제 속도를 보여줘요.',
     secEco:'생태계 (자동 탐색으로 찾음)', secMine:'내 발견', discTitle:'신종 탐색', discHint:'무작위 규칙과 수프를 시험해서, 빈 세상에 혼자 두어도 살아남는 새 생물만 골라내요.', discStart:'탐색 시작', discStop:'멈추기',
-    discStat:'시험 {n}개 · 찾음 {f}개', discNow:'지금 시험 중: R {R} · μ {m} · σ {s}', kMove:'이동형', kSpin:'회전형', kStill:'정지형', save:'저장', del:'삭제',
+    discStat:'시험 {n}개 · 찾음 {f}개', discNow:'지금 시험 중: R {R} · μ {m} · σ {s}', kMove:'이동형', kSpin:'회전형', kStill:'정지형', save:'저장', del:'삭제', rename:'이름 바꾸기',
     mineName:'내 발견 #{n}', candName:'후보 #{n}', mineEmpty:'아직 저장한 생물이 없어요. 아래 신종 탐색으로 찾아보세요.', mineDesc:'{k} · 직접 찾은 생물이에요. 빈 세상에서 혼자 400스텝을 버텼어요.',
     lgU:'이웃 밀도 U', lgGrow:'자라는 곳 (G>0)', lgShrink:'줄어드는 곳 (G<0)', kExplain:'커널마다 앞 채널의 이웃을 보고, 뒤 채널의 성장을 정해요. h는 그 커널의 비중이에요.',
     help:'도움말', testsRun:'단위 테스트 실행 중…', testsTitle:'단위 테스트', close:'닫기', custom:'(직접 만든 세상)',
@@ -399,7 +404,7 @@ A ← clip(A + dt·G(U), 0, 1)
     coach:'This creature only survives with μ near 0.15. What happens if you nudge μ a little?', coachTry:'Try changing μ', coachX:'Dismiss',
     stps:'steps/s', slowT:'The kernel is large, so the GPU cannot reach the set speed. This is the real rate.',
     secEco:'Ecosystems (found by search)', secMine:'My finds', discTitle:'Discover new species', discHint:'Tries random rules on random soup and keeps only creatures that survive alone in an empty world.', discStart:'Start search', discStop:'Stop',
-    discStat:'tried {n} · found {f}', discNow:'now testing: R {R} · μ {m} · σ {s}', kMove:'mover', kSpin:'spinner', kStill:'still', save:'Save', del:'Delete',
+    discStat:'tried {n} · found {f}', discNow:'now testing: R {R} · μ {m} · σ {s}', kMove:'mover', kSpin:'spinner', kStill:'still', save:'Save', del:'Delete', rename:'Rename',
     mineName:'My find #{n}', candName:'Candidate #{n}', mineEmpty:'Nothing saved yet — try the search below.', mineDesc:'{k} · found by you. It survived 400 steps alone in an empty world.',
     lgU:'Neighbor sum U', lgGrow:'growing (G>0)', lgShrink:'shrinking (G<0)', kExplain:'Each kernel looks at the first channel\'s neighbors and drives growth in the second. h is its weight.',
     help:'Help', testsRun:'Running unit tests…', testsTitle:'Unit tests', close:'Close', custom:'(your own world)',
@@ -433,6 +438,7 @@ let LANG = (() => {
   return (navigator.language || 'ko').toLowerCase().startsWith('ko') ? 'ko' : 'en';
 })();
 const t = k => (I18N[LANG][k] ?? I18N.ko[k] ?? k);
+const esc = v => String(v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const tf = (k, o) => t(k).replace(/\{(\w+)\}/g, (_, x) => o[x]);
 
 /* ===================== MATH: kernel, growth, RLE ===================== */
@@ -1182,10 +1188,11 @@ function buildGallery() {
   if (!mine.length) { const p = document.createElement('p'); p.className = 'gempty'; p.dataset.i18n = 'mineEmpty'; p.textContent = t('mineEmpty'); gal.appendChild(p); }
   for (const [sp, i] of mine) {
     const c = document.createElement('div'); c.className = 'card'; c.setAttribute('role', 'button'); c.tabIndex = 0; c.dataset.kind = 's'; c.dataset.i = i;
-    c.innerHTML = `<canvas></canvas><span class="nm"></span><span class="lt"></span><button class="cdel" aria-label="delete">✕</button>`;
-    c.onclick = e => { if (e.target.closest('.cdel')) return; loadSpecies(i); if (!S.running) { S.running = true; syncPlay(); } };
-    c.onkeydown = e => { if (e.key === 'Enter') c.onclick(e); };
+    c.innerHTML = `<canvas></canvas><span class="nmrow"><span class="nm"></span><button class="ren" aria-label="rename">✎</button></span><span class="lt"></span><button class="cdel" aria-label="delete">✕</button>`;
+    c.onclick = e => { if (e.target.closest('.cdel, .ren, .renin')) return; loadSpecies(i); if (!S.running) { S.running = true; syncPlay(); } };
+    c.onkeydown = e => { if (e.key === 'Enter' && !e.target.closest('.renin')) c.onclick(e); };
     c.querySelector('.cdel').onclick = () => deleteFind(sp); c.querySelector('.cdel').title = t('del');
+    c.querySelector('.ren').onclick = () => startRename(c, sp); c.querySelector('.ren').title = t('rename');
     gal.appendChild(c); drawThumb(c.querySelector('canvas'), sp);
   }
   syncGallery();
@@ -1331,11 +1338,11 @@ function syncText() {
 }
 function syncInfo() {
   if (S.mode === 'multi') { const ms = MSPECIES[S.ms];
-    $('#infoT').innerHTML = `${ms[LANG].name}<i>${ms.name}</i>`;
+    $('#infoT').innerHTML = `${esc(ms[LANG].name)}<i>${esc(ms.name)}</i>`;
     $('#infoD').textContent = S.custom ? t('custom') + ' · R ' + S.rule.R + ' · T ' + S.rule.T : ms[LANG].desc; return; }
   const sp = SPECIES[S.sp];
   if (!sp) { $('#infoT').textContent = ''; return; }
-  $('#infoT').innerHTML = `${sp[LANG].name}<i>${sp.name}</i>`;
+  $('#infoT').innerHTML = `${esc(sp[LANG].name)}<i>${esc(sp.name)}</i>`;
   $('#infoD').textContent = S.custom ? t('custom') + ' · μ ' + S.m + ' · σ ' + S.s + ' · R ' + S.R : sp[LANG].desc;
 }
 function syncChSeg() {
@@ -1557,11 +1564,27 @@ function addFind(o, saved) {
   const n = saved ? o.n : mineSeq++, kind = { move: 'kMove', spin: 'kSpin', still: 'kStill' }[o.kind];
   const sp = { ...o, n, id: o.id || 'my-' + Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), name: `R ${o.R} · μ ${o.m} · σ ${o.s}`, mine: !!saved, cand: !saved, deleted: false, b: Array.isArray(o.b) ? o.b.map(fmtFrac).join(',') : o.b };
   for (const L of ['ko', 'en']) { const tt = k => I18N[L][k]; sp[L] = { name: (saved ? tt('mineName') : tt('candName')).replace('{n}', n), desc: tt('mineDesc').replace('{k}', tt(kind)) }; }
+  if (o.title) { sp.title = String(o.title).slice(0, 24); sp.ko.name = sp.en.name = sp.title; }
   if (saved && o.n >= mineSeq) mineSeq = o.n + 1;
   SPECIES.push(sp); buildGallery(); renderFinds(); return sp;
 }
+function renameFind(sp, name) {          // user text: stored as-is, only ever shown through textContent / esc()
+  const v = String(name || '').replace(/\s+/g, ' ').trim().slice(0, 24);
+  sp.title = v || null;
+  for (const L of ['ko', 'en']) sp[L].name = v || I18N[L][sp.mine ? 'mineName' : 'candName'].replace('{n}', sp.n);
+  if (sp.mine) persistMine();
+  buildGallery(); renderFinds(); syncInfo();
+}
+function startRename(card, sp) {
+  const nm = card.querySelector('.nm'); if (!nm || card.querySelector('.renin')) return;
+  const inp = document.createElement('input'); inp.className = 'renin'; inp.maxLength = 24; inp.value = sp[LANG].name; inp.setAttribute('aria-label', t('rename'));
+  nm.replaceWith(inp); inp.focus(); inp.select();
+  let done = false; const finish = ok => { if (done) return; done = true; if (ok) renameFind(sp, inp.value); else { inp.replaceWith(nm); } };
+  inp.onkeydown = e => { e.stopPropagation(); if (e.key === 'Enter') finish(true); else if (e.key === 'Escape') finish(false); };
+  inp.onblur = () => finish(true); inp.onclick = e => e.stopPropagation();
+}
 function saveFind(sp) {
-  sp.mine = true; sp.cand = false; for (const L of ['ko', 'en']) sp[L].name = I18N[L].mineName.replace('{n}', sp.n);
+  sp.mine = true; sp.cand = false; for (const L of ['ko', 'en']) sp[L].name = sp.title || I18N[L].mineName.replace('{n}', sp.n);
   persistMine(); buildGallery(); renderFinds();
 }
 function deleteFind(sp) {
@@ -1570,7 +1593,7 @@ function deleteFind(sp) {
   buildGallery(); renderFinds();
 }
 function persistMine() {
-  const keep = SPECIES.filter(x => x.mine && !x.deleted).map(({ id, n, R, T, m, s, b, cells, w, h, kind, speed }) => ({ id, n, R, T, m, s, b, cells, w, h, kind, speed }));
+  const keep = SPECIES.filter(x => x.mine && !x.deleted).map(({ id, n, R, T, m, s, b, cells, w, h, kind, speed, title }) => ({ id, n, R, T, m, s, b, cells, w, h, kind, speed, title }));
   try { localStorage.setItem('leniaMine', JSON.stringify(keep)); } catch (e) {}
 }
 function loadMine() {
@@ -1581,11 +1604,12 @@ function renderFinds() {
   const box = $('#discFound'); if (!box) return; box.innerHTML = '';
   SPECIES.forEach((sp, i) => { if (!sp.cand || sp.deleted) return;
     const c = document.createElement('div'); c.className = 'card'; c.setAttribute('role', 'button'); c.tabIndex = 0; c.dataset.i = i;
-    c.innerHTML = `<canvas></canvas><span class="ckind"></span><span class="nm"></span><button class="btn save"></button>`;
+    c.innerHTML = `<canvas></canvas><span class="ckind"></span><span class="nmrow"><span class="nm"></span><button class="ren" aria-label="rename">✎</button></span><button class="btn save"></button>`;
     c.querySelector('.ckind').textContent = t({ move: 'kMove', spin: 'kSpin', still: 'kStill' }[sp.kind]);
     c.querySelector('.nm').textContent = sp[LANG].name; c.querySelector('.save').textContent = t('save'); c.title = sp[LANG].desc;
-    c.onclick = e => { if (e.target.closest('.save')) return; loadSpecies(i); if (!S.running) { S.running = true; syncPlay(); } };
-    c.onkeydown = e => { if (e.key === 'Enter') c.onclick(e); };
+    c.querySelector('.ren').onclick = () => startRename(c, sp); c.querySelector('.ren').title = t('rename');
+    c.onclick = e => { if (e.target.closest('.save, .ren, .renin')) return; loadSpecies(i); if (!S.running) { S.running = true; syncPlay(); } };
+    c.onkeydown = e => { if (e.key === 'Enter' && !e.target.closest('.renin')) c.onclick(e); };
     c.querySelector('.save').onclick = () => saveFind(sp);
     box.appendChild(c); drawThumb(c.querySelector('canvas'), sp);
     c.classList.toggle('on', S.mode === 'single' && S.sp === i && !S.custom);
@@ -1896,6 +1920,17 @@ const ECO_SEARCH = async ({ seed, count, fixed, variant, mode }) => {
       loadMulti(i); stepWorld(400); world.read(); const m = world.chanMass(), good = m[0] > 30 && m[1] > 30;
       if (!good) pass = false; det.push(`앱에서 불러온 프리셋 400스텝 뒤 질량 ${m[0].toFixed(0)}/${m[1].toFixed(0)}${good ? '' : ' ✘'}`); }
     ok('32. 생태계 프리셋: 탐색 때와 같은 판정 실험을 다시 돌려도 같은 결과', pass, det.join(' · ') || '프리셋 없음'); }
+  // 33. rename: inline edit, persisted, escaped
+  { let prev = null; try { prev = localStorage.getItem('leniaMine'); } catch (e) {}
+    const src = SPECIES[0], sp = addFind({ R: src.R, T: 10, m: src.m, s: src.s, b: [1], cells: src.cells, w: src.w, h: src.h, kind: 'move', speed: 6 }, false);
+    saveFind(sp); renameFind(sp, '  <b>헤엄이</b>   꼬리   ');
+    const stored = JSON.parse(localStorage.getItem('leniaMine') || '[]').find(o => o.id === sp.id);
+    const card = $$('#gallery .card').find(c => SPECIES[+c.dataset.i] === sp);
+    loadSpecies(SPECIES.indexOf(sp)); const info = $('#infoT').innerHTML;
+    const pass = stored && stored.title === '<b>헤엄이</b> 꼬리' && card && card.querySelector('.nm').textContent === '<b>헤엄이</b> 꼬리' && !$('#infoT b') && info.includes('&lt;b&gt;');
+    renameFind(sp, ''); const reverted = sp.ko.name === I18N.ko.mineName.replace('{n}', sp.n);
+    deleteFind(sp); try { if (prev === null) localStorage.removeItem('leniaMine'); else localStorage.setItem('leniaMine', prev); } catch (e) {}
+    ok('33. 이름 바꾸기: 저장 + 도감 표시 + 태그는 글자로만 + 빈 이름이면 원래 이름', pass && reverted, `저장값 "${stored && stored.title}", 정보 상자 ${info.slice(0, 40)}…`); }
   } catch (e) { ok('예외 발생', false, String(e && e.stack || e)); }
   for (const w of tw) w.dispose();
   const nPass = out.filter(o => o.pass).length;
