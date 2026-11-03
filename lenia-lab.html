@@ -210,7 +210,7 @@ kbd{font-family:var(--mono);background:rgba(255,255,255,.08);border:1px solid va
       <button class="btn" id="clearBtn" data-i18n="clear">비우기</button>
     </div>
     <div class="hright">
-      <select id="gridSel" data-i18n-title="gridT"><option value="128">128²</option><option value="256" selected>256²</option><option value="512">512²</option></select>
+      <select id="gridSel" data-i18n-title="gridT"><option value="auto" selected>Auto</option><option value="128">128²</option><option value="256">256²</option><option value="512">512²</option><option value="1024">1024²</option></select>
       <select id="cmapSel" data-i18n-title="cmapT"></select>
       <button class="btn" id="langBtn">EN</button>
       <button class="btn icon" id="helpBtn" aria-label="help">?</button>
@@ -353,7 +353,7 @@ const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAl
 /* ===================== I18N ===================== */
 const I18N = {
   ko: {
-    speed:'속도', stepT:'한 스텝 (.)', reset:'⟲ 다시', clear:'비우기', gridT:'격자 크기', cmapT:'색상', fitT:'전체 보기', followT:'생물 따라가기 (F)',
+    speed:'속도', stepT:'한 스텝 (.)', reset:'⟲ 다시', clear:'비우기', gridT:'세상 크기 (자동: 단일 채널 512², 다채널 256²)', cmapT:'색상', fitT:'전체 보기', followT:'생물 따라가기 (F)',
     species:'생물 도감', speciesSub:'눌러서 불러오기', credit:'생물 데이터: Bert Chan, Lenia (MIT 라이선스)',
     params:'파라미터', paramsSub:'눈금 = 원래 값', rings:'커널 고리 β', kshape:'커널 모양', gshape:'성장 함수',
     poly:'다항식', bump:'지수 봉우리', gauss:'가우스', restore:'원래 값으로', link:'링크 복사', png:'PNG 저장',
@@ -376,6 +376,7 @@ const I18N = {
     lgU:'이웃 밀도 U', lgGrow:'자라는 곳 (G>0)', lgShrink:'줄어드는 곳 (G<0)', kExplain:'커널마다 앞 채널의 이웃을 보고, 뒤 채널의 성장을 정해요. h는 그 커널의 비중이에요.',
     edge:'세상 가장자리', eWrap:'이어진 세상', eWall:'벽 있는 세상', eWrapH:'오른쪽 끝을 넘으면 왼쪽에서 나와요 (원작 Lenia 방식). 화면에 이어 보이는 어두운 부분은 같은 세상의 복사본이에요.', eWallH:'가장자리 밖은 빈 공간이에요. 생물이 넘어가지 못하고 벽에 부딪혀요.',
     tWall:'장애물', hWall:'드래그해서 장애물을 그려요. 장애물 칸은 항상 비어 있어서, 생물이 닿으면 그 부분이 깎여요. 지우기로 없앨 수 있어요.', course:'장애물 코스',
+    gridAuto:'자동', 
     help:'도움말', testsRun:'단위 테스트 실행 중…', testsTitle:'단위 테스트', close:'닫기', custom:'(직접 만든 세상)',
     cm_lenia:'Lenia', cm_magma:'마그마', cm_glacier:'빙하', cm_neon:'네온',
     helpHtml:`<h3>Lenia Lab</h3>
@@ -401,7 +402,7 @@ A ← clip(A + dt·G(U), 0, 1)
 <p>Bert Wang-Chak Chan, "Lenia — Biology of Artificial Life", <i>Complex Systems</i> 28(3), 2019. 생물 데이터는 <a href="https://github.com/Chakazul/Lenia" target="_blank" rel="noopener" style="color:var(--acc2)">github.com/Chakazul/Lenia</a> (MIT)에서 가져왔어요.</p>`
   },
   en: {
-    speed:'Speed', stepT:'Single step (.)', reset:'⟲ Reset', clear:'Clear', gridT:'Grid size', cmapT:'Colors', fitT:'Fit view', followT:'Follow the creature (F)',
+    speed:'Speed', stepT:'Single step (.)', reset:'⟲ Reset', clear:'Clear', gridT:'World size (auto: 512² single-channel, 256² multi-channel)', cmapT:'Colors', fitT:'Fit view', followT:'Follow the creature (F)',
     species:'Species', speciesSub:'click to load', credit:'Species data: Bert Chan, Lenia (MIT license)',
     params:'Parameters', paramsSub:'tick = original value', rings:'Kernel rings β', kshape:'Kernel shape', gshape:'Growth function',
     poly:'Polynomial', bump:'Exp. bump', gauss:'Gaussian', restore:'Restore', link:'Copy link', png:'Save PNG',
@@ -424,6 +425,7 @@ A ← clip(A + dt·G(U), 0, 1)
     lgU:'Neighbor sum U', lgGrow:'growing (G>0)', lgShrink:'shrinking (G<0)', kExplain:'Each kernel looks at the first channel\'s neighbors and drives growth in the second. h is its weight.',
     edge:'World edge', eWrap:'Wrap-around', eWall:'Walled', eWrapH:'Leaving the right side brings you back on the left (original Lenia). The dimmed area is a repeated copy of the same world.', eWallH:'Outside the edge is empty space. Creatures cannot cross it and hit the wall.',
     tWall:'Obstacle', hWall:'Drag to draw obstacles. Obstacle cells always stay empty, so a creature touching one gets cut there. Erase removes them.', course:'Obstacle course',
+    gridAuto:'Auto', 
     help:'Help', testsRun:'Running unit tests…', testsTitle:'Unit tests', close:'Close', custom:'(your own world)',
     cm_lenia:'Lenia', cm_magma:'Magma', cm_glacier:'Glacier', cm_neon:'Neon',
     helpHtml:`<h3>Lenia Lab</h3>
@@ -880,7 +882,7 @@ const torusDelta = (a, b, N) => { let d = b - a; d -= Math.round(d / N) * N; ret
 
 /* ===================== APP STATE ===================== */
 const SPEEDS = [5, 10, 20, 30, 60, 120, 240, 480];   // steps per second
-const S = { edge: 'wrap', mode: 'single', ms: 0, rule: null, sel: 0, ch: 0, N: 256, sp: 0, R: 13, T: 10, m: 0.15, s: 0.015, b: [1], kn: 1, gn: 1, speed: 4, running: true, cmap: 'lenia', view: 'A', tool: 'draw', brush: 14, custom: false };
+const S = { grid: 'auto', edge: 'wrap', mode: 'single', ms: 0, rule: null, sel: 0, ch: 0, N: 512, sp: 0, R: 13, T: 10, m: 0.15, s: 0.015, b: [1], kn: 1, gn: 1, speed: 4, running: true, cmap: 'lenia', view: 'A', tool: 'draw', brush: 14, custom: false };
 let world = null, KER = null, MKER = null;
 const view = { k: 1, ox: 0, oy: 0 };    // k = zoom (1 = whole world fits), o = world coords of top-left
 let follow = true, editing = false, edited = false, vel = { x: 0, y: 0 };  // camera follows the centroid (smoothed, extrapolated with velocity)
@@ -892,6 +894,9 @@ function rebuildKernel() { freeKernel(KER); KER = gpuKernel(buildKernel(S.R, S.b
 function newWorld(N) { if (world) world.dispose(); world = new World(N, S.mode === 'multi'); world.wall = S.edge === 'wall'; S.N = N; fitView(); }
 function ensureWorld(multi) { if (!world || world.multi !== multi) { if (world) world.dispose(); world = new World(S.N, multi); } world.wall = S.edge === 'wall'; }
 function rebuildMulti() { freeKernel(MKER); MKER = gpuMultiKernel(buildMultiKernel(S.rule)); drawKernelGraph(); }
+function gridFor(mode) { return S.grid === 'auto' ? (mode === 'single' ? 512 : 256) : S.grid; }   // auto: roomy 512² where it stays fast, 256² for heavy multi-channel rules
+function sizeWorldFor(mode) { const n = gridFor(mode); if (n !== S.N) { if (world) world.dispose(); world = null; S.N = n; } }
+function syncGrid() { const o = $('#gridSel option[value=auto]'); o.textContent = t('gridAuto'); $('#gridSel').value = String(S.grid); $('#gridSel').title = `${t('gridT')}: ${S.N}²`; }
 function stepWorld(n) { if (S.mode === 'multi') world.stepM(n, MKER, S.rule, S.sel); else world.step(n, KER, params()); }
 function selKernel() { return S.mode === 'multi' ? S.rule.kernels[Math.min(S.sel, S.rule.kernels.length - 1)] : { b: S.b, kn: S.kn, gn: S.gn, m: S.m, s: S.s, r: 1 }; }
 function curR() { return S.mode === 'multi' ? S.rule.R : S.R; }
@@ -900,7 +905,7 @@ function muOf(ch) { if (S.mode !== 'multi') return S.m; const ks = S.rule.kernel
 function reloadCurrent(keepParams) { if (S.mode === 'multi') loadMulti(S.ms, keepParams); else loadSpecies(S.sp, keepParams); }
 function loadMulti(j, keepParams) {
   const ms = MSPECIES[j]; if (!ms) return;
-  S.mode = 'multi'; S.ms = j; S.custom = false; S.sel = Math.min(S.sel, ms.params.length - 1); S.ch = Math.min(S.ch, ms.cells.length - 1);
+  sizeWorldFor('multi'); S.mode = 'multi'; S.ms = j; S.custom = false; S.sel = Math.min(S.sel, ms.params.length - 1); S.ch = Math.min(S.ch, ms.cells.length - 1);
   if (!keepParams || !S.rule) S.rule = ruleFromMS(ms);
   ensureWorld(true); rebuildMulti();
   world.clear(); hist.length = 0; lastStat = null; speedEMA = null; hadLife = true;
@@ -908,19 +913,19 @@ function loadMulti(j, keepParams) {
   if (ms.stamps) for (const st of ms.stamps) world.paint(2, { x: S.N / 2 + st.dx, y: S.N / 2 + st.dy, ang: st.th - ORB_TH0, pat: patternTex(SPECIES[0], st.ch) });
   else world.paint(2, { x: S.N / 2, y: S.N / 2, ang: 0, pat });
   world.steps = 0; vel = { x: 0, y: 0 }; edited = false;
-  centerView(S.N / 2, S.N / 2, ms.stamps ? 1.6 : Math.max(1, Math.min(4, S.N / (Math.max(pat.w, pat.h) * 4)))); setFollow(!ms.stamps || ms.eco === 'symbiosis');
+  centerView(S.N / 2, S.N / 2, ms.stamps ? 1.6 * S.N / 256 : Math.max(1, Math.min(8, S.N / (Math.max(pat.w, pat.h) * 4)))); setFollow(!ms.stamps || ms.eco === 'symbiosis');
   buildMultiParams(); syncAll(); writeHash();
 }
 
 function loadSpecies(i, keepParams) {
   const sp = SPECIES[i]; if (!sp) return;
-  S.sp = i; S.custom = false; S.mode = 'single'; ensureWorld(false);
+  sizeWorldFor('single'); S.sp = i; S.custom = false; S.mode = 'single'; ensureWorld(false);
   if (!keepParams) { const from = { m: S.m, s: S.s, R: S.R, T: S.T }; Object.assign(S, { R: sp.R, T: sp.T, m: sp.m, s: sp.s, b: parseB(sp.b), kn: 1, gn: 1 }); tweenSliders(from); }
   rebuildKernel();
   world.clear(); hist.length = 0; lastStat = null; speedEMA = null; hadLife = true;
   world.paint(2, { x: S.N / 2, y: S.N / 2, ang: 0, pat: patternTex(sp) });
   world.steps = 0; vel = { x: 0, y: 0 }; edited = false;
-  centerView(S.N / 2, S.N / 2, Math.max(1, Math.min(4, S.N / (Math.max(sp.w, sp.h) * 5)))); setFollow(true);
+  centerView(S.N / 2, S.N / 2, Math.max(1, Math.min(8, S.N / (Math.max(sp.w, sp.h) * 5)))); setFollow(true);
   syncAll(); writeHash();
 }
 function obstacleCourse() {      // pillars on a jittered grid, leaving room around the creature
@@ -1072,7 +1077,7 @@ function frame(now) {
   if (now - fpsT > 500) { fps = frames * 1000 / (now - fpsT); frames = 0; fpsT = now; $('#sFps').textContent = fps.toFixed(0); }
   if (now - rateT > 1000) { const real = stepsDone * 1000 / (now - rateT); stepsDone = 0; rateT = now;
     const slow = S.running && real < SPEEDS[S.speed] * 0.85; $('#sRate').textContent = S.running ? real.toFixed(0) : '—'; $('#sRateBox').classList.toggle('slow', slow); $('#sRateBox').title = slow ? t('slowT') : ''; }
-  const every = S.N >= 512 ? 30 : 12;
+  const every = S.N >= 1024 ? 60 : S.N >= 512 ? 30 : 12;
   if (!TESTING && frameNo % every === 0) updateStats();
 }
 function updateStats(force) {
@@ -1386,7 +1391,7 @@ function syncText() {
   $('#langBtn').textContent = LANG === 'ko' ? 'EN' : '한국어';
   $('#helpBtn').title = t('help');
   const cs = $('#cmapSel'); const cur = S.cmap; cs.innerHTML = Object.keys(CMAPS).map(k => `<option value="${k}">${t('cm_' + k)}</option>`).join(''); cs.value = cur;
-  syncTool(); syncGallery(); syncParams(); syncInfo(); syncSpeed(); syncView(); setStatus(statusKind); if ($('#discBtn')) renderFinds();
+  syncTool(); syncGallery(); syncParams(); syncInfo(); syncSpeed(); syncView(); syncGrid(); setStatus(statusKind); if ($('#discBtn')) renderFinds();
   if ($('#overlay').classList.contains('on')) $('#ovBody').innerHTML = t('helpHtml');
 }
 function syncInfo() {
@@ -1430,11 +1435,11 @@ function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList
 /* ===================== URL HASH ===================== */
 function stateToHash() {
   if (S.mode === 'multi') {
-    const q = new URLSearchParams({ mode: 'm', edge: S.edge, s: MSPECIES[S.ms].id, R: S.rule.R, T: S.rule.T, k: S.rule.kernels.map(k => [k.m, k.s, k.h].map(v => +(+v).toFixed(5)).join('_')).join('~'), N: S.N, cm: S.cmap });
+    const q = new URLSearchParams({ mode: 'm', edge: S.edge, s: MSPECIES[S.ms].id, R: S.rule.R, T: S.rule.T, k: S.rule.kernels.map(k => [k.m, k.s, k.h].map(v => +(+v).toFixed(5)).join('_')).join('~'), N: S.grid === 'auto' ? 'auto' : S.N, cm: S.cmap });
     return '#' + q.toString();
   }
   const sp = SPECIES[S.sp];
-  const q = new URLSearchParams({ edge: S.edge, s: sp ? sp.id : '', mu: S.m, sigma: S.s, R: S.R, T: S.T, b: S.b.map(v => +v.toFixed(4)).join(','), kn: S.kn, gn: S.gn, N: S.N, cm: S.cmap });
+  const q = new URLSearchParams({ edge: S.edge, s: sp ? sp.id : '', mu: S.m, sigma: S.s, R: S.R, T: S.T, b: S.b.map(v => +v.toFixed(4)).join(','), kn: S.kn, gn: S.gn, N: S.grid === 'auto' ? 'auto' : S.N, cm: S.cmap });
   return '#' + q.toString();
 }
 function parseHash(h) {
@@ -1447,7 +1452,7 @@ function parseHash(h) {
   if (o.R) o.R = Math.round(o.R);
   if (q.has('b')) { const b = q.get('b').split(',').map(Number).filter(v => isFinite(v) && v >= 0 && v <= 1); if (b.length >= 1 && b.length <= 4) o.b = b; }
   for (const k of ['kn', 'gn']) if (['1', '2'].includes(q.get(k))) o[k] = +q.get(k);
-  if (['128', '256', '512'].includes(q.get('N'))) o.N = +q.get('N');
+  if (q.get('N') === 'auto') o.grid = 'auto'; else if (['128', '256', '512', '1024'].includes(q.get('N'))) o.grid = +q.get('N');
   if (CMAPS[q.get('cm')]) o.cmap = q.get('cm');
   if (['wrap', 'wall'].includes(q.get('edge'))) o.edge = q.get('edge');
   return o;
@@ -1458,7 +1463,7 @@ function applyHash() {
   const o = parseHash(location.hash); if (!Object.keys(o).length) return false;
   applyingHash = true;
   if (o.edge) { S.edge = o.edge; if (world) world.wall = S.edge === 'wall'; syncEdge(); }
-  if (o.N && o.N !== S.N) { newWorld(o.N); $('#gridSel').value = o.N; }
+  if (o.grid) { S.grid = o.grid; syncGrid(); }
   if (o.cmap) { S.cmap = o.cmap; setLUT(S.cmap); $('#cmapSel').value = S.cmap; buildGallery(); }
   if (o.mode === 'm') {
     loadMulti(o.ms ?? 0); let ch = false;
@@ -1484,7 +1489,7 @@ function bindUI() {
   $('#resetBtn').onclick = () => reloadCurrent(true);
   $('#restoreBtn').onclick = () => reloadCurrent(false);
   $('#clearBtn').onclick = () => clearWorld();
-  $('#gridSel').onchange = e => { newWorld(+e.target.value); reloadCurrent(true); };
+  $('#gridSel').onchange = e => { S.grid = e.target.value === 'auto' ? 'auto' : +e.target.value; sizeWorldFor(S.mode); ensureWorld(S.mode === 'multi'); reloadCurrent(true); syncGrid(); writeHash(); };
   $('#cmapSel').onchange = e => { S.cmap = e.target.value; setLUT(S.cmap); buildGallery(); drawKernelGraph(); writeHash(); };
   $('#langBtn').onclick = () => { LANG = LANG === 'ko' ? 'en' : 'ko'; try { localStorage.setItem('leniaLang', LANG); } catch (e) {} syncText(); drawKernelGraph(); };
   $('#helpBtn').onclick = () => { $('#ovBody').innerHTML = t('helpHtml'); $('#overlay').classList.add('on'); $('#ovClose').focus(); };
@@ -1810,12 +1815,12 @@ async function runTests() {
     ok('16. 화면↔세계 좌표 변환 + 커서 기준 확대', err < 1e-9 && drift < 1e-9, `왕복 오차 ${err.toExponential(1)}, 확대 시 커서 아래 점 이동 ${drift.toExponential(1)}`); }
   // 17. URL hash round trip
   { const save = { ...S, b: S.b.slice() };
-    Object.assign(S, { sp: 3, m: 0.1234, s: 0.0123, R: 17, T: 25, b: [0.5, 1, 0.25], kn: 2, gn: 2, N: 512, cmap: 'neon' });
+    Object.assign(S, { sp: 3, m: 0.1234, s: 0.0123, R: 17, T: 25, b: [0.5, 1, 0.25], kn: 2, gn: 2, N: 512, grid: 512, cmap: 'neon' });
     const h = stateToHash(), o = parseHash(h);
-    const pass = o.sp === 3 && o.m === 0.1234 && o.s === 0.0123 && o.R === 17 && o.T === 25 && o.b.join() === '0.5,1,0.25' && o.kn === 2 && o.gn === 2 && o.N === 512 && o.cmap === 'neon';
+    const pass = o.sp === 3 && o.m === 0.1234 && o.s === 0.0123 && o.R === 17 && o.T === 25 && o.b.join() === '0.5,1,0.25' && o.kn === 2 && o.gn === 2 && o.grid === 512 && o.cmap === 'neon';
     const junk = parseHash('#mu=abc&R=999&b=5,5&N=300&cm=x');
     Object.assign(S, save);
-    ok('17. URL 해시 저장 ↔ 불러오기 (+ 잘못된 값 거르기)', pass && junk.m === undefined && junk.R === 50 && !junk.b && !junk.N && !junk.cmap, h); }
+    ok('17. URL 해시 저장 ↔ 불러오기 (+ 잘못된 값 거르기)', pass && junk.m === undefined && junk.R === 50 && !junk.b && !junk.grid && !junk.cmap, h); }
   // 18. LUTs monotonic in luminance
   { let pass = true, det = [];
     for (const k of Object.keys(CMAPS)) { const L = makeLUT(k); let mono = true; for (let i = 1; i < 256; i++) if (luminance(L[i * 4], L[i * 4 + 1], L[i * 4 + 2]) < luminance(L[i * 4 - 4], L[i * 4 - 3], L[i * 4 - 2]) - 0.5) mono = false;
@@ -2047,6 +2052,13 @@ const ECO_SEARCH = async ({ seed, count, fixed, variant, mode }) => {
       freeKernel(MK); w.dispose(); await tick();
     }
     ok('37. 쇼케이스 설명이 사실인지 (1500스텝 동안 분열·군체·무리·구조)', pass, det.join(' · ')); }
+  // 38. world size: auto gives single-channel 512² and multi-channel 256²; a 1024² world runs
+  { const save = { grid: S.grid };
+    S.grid = 'auto'; loadSpecies(0); const a = S.N === 512 && world.N === 512 && !world.multi;
+    loadMulti(5); const b = S.N === 256 && world.N === 256 && world.multi;
+    S.grid = 1024; loadSpecies(0); world.step(20, KER, params()); const m = sum(world.read()); const c = world.N === 1024 && m > 60;
+    S.grid = save.grid; loadSpecies(0);
+    ok('38. 세상 크기: 자동 = 단일 512² · 다채널 256², 1024² 세상도 동작', a && b && c, `단일 ${a}, 다채널 ${b}, 1024² 질량 ${m.toFixed(1)}`); }
   } catch (e) { ok('예외 발생', false, String(e && e.stack || e)); }
   for (const w of tw) w.dispose();
   const nPass = out.filter(o => o.pass).length;
