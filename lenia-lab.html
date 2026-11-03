@@ -274,6 +274,9 @@ kbd{font-family:var(--mono);background:rgba(255,255,255,.08);border:1px solid va
       <div class="gbox" id="boxG"><div class="gt"><span data-i18n="gG">성장 G(U) + 지금 U 분포</span><span id="gGv"></span></div><canvas id="gG"></canvas>
         <p class="hint" data-i18n="gGhint"></p></div>
       <div class="gbox"><div class="gt"><span data-i18n="gM">질량 변화</span><span id="gMv"></span></div><canvas id="gM"></canvas></div>
+      <div class="subh"><span data-i18n="edge">세상 가장자리</span></div>
+      <div class="seg" id="edgeSeg"><button class="btn" data-v="wrap" data-i18n="eWrap">이어진 세상</button><button class="btn" data-v="wall" data-i18n="eWall">벽 있는 세상</button></div>
+      <p class="hint" id="edgeHint"></p>
       <div class="subh"><span data-i18n="viewMode">화면에 보기</span></div>
       <div class="seg" id="viewSeg"><button class="btn" data-v="A" data-i18n="vA">생물 A</button><button class="btn" data-v="U" data-i18n="vU">이웃 밀도 U</button><button class="btn" data-v="G" data-i18n="vG">성장 G</button></div>
     </section>
@@ -362,6 +365,7 @@ const I18N = {
     discStat:'시험 {n}개 · 찾음 {f}개', discNow:'지금 시험 중: R {R} · μ {m} · σ {s}', kMove:'이동형', kSpin:'회전형', kStill:'정지형', save:'저장', del:'삭제', rename:'이름 바꾸기',
     mineName:'내 발견 #{n}', candName:'후보 #{n}', mineEmpty:'아직 저장한 생물이 없어요. 아래 신종 탐색으로 찾아보세요.', mineDesc:'{k} · 직접 찾은 생물이에요. 빈 세상에서 혼자 400스텝을 버텼어요.',
     lgU:'이웃 밀도 U', lgGrow:'자라는 곳 (G>0)', lgShrink:'줄어드는 곳 (G<0)', kExplain:'커널마다 앞 채널의 이웃을 보고, 뒤 채널의 성장을 정해요. h는 그 커널의 비중이에요.',
+    edge:'세상 가장자리', eWrap:'이어진 세상', eWall:'벽 있는 세상', eWrapH:'오른쪽 끝을 넘으면 왼쪽에서 나와요 (원작 Lenia 방식). 화면에 이어 보이는 어두운 부분은 같은 세상의 복사본이에요.', eWallH:'가장자리 밖은 빈 공간이에요. 생물이 넘어가지 못하고 벽에 부딪혀요.',
     help:'도움말', testsRun:'단위 테스트 실행 중…', testsTitle:'단위 테스트', close:'닫기', custom:'(직접 만든 세상)',
     cm_lenia:'Lenia', cm_magma:'마그마', cm_glacier:'빙하', cm_neon:'네온',
     helpHtml:`<h3>Lenia Lab</h3>
@@ -377,7 +381,7 @@ A ← clip(A + dt·G(U), 0, 1)
 <li><b>그래프</b>에서 지금 칸들의 U 분포가 색칠된 구간 안에 있는지 보세요. 생물이 죽는 이유가 보여요.</li>
 <li><b>생물 찍기</b>로 같은 종을 여러 마리 놓아 부딪히게 해 보세요.</li>
 <li><b>무작위 수프</b>를 뿌리면 가끔 저절로 생물이 생겨나요.</li>
-<li>화면의 옅은 <b>파란 선</b>은 세상의 경계예요. 위아래·좌우가 이어져 있어서, 경계를 넘은 생물은 반대편에서 나와요.</li></ul>
+<li>화면의 옅은 <b>파란 선</b>은 세상의 경계예요. 기본은 위아래·좌우가 이어진 세상이라, 경계를 넘은 생물은 반대편에서 나와요. 어둡게 보이는 부분은 같은 세상의 복사본이에요. <b>그래프 → 세상 가장자리</b>에서 벽 있는 세상으로 바꿀 수 있어요.</li></ul>
 <div class="kbonly"><h4>단축키</h4>
 <table><tr><td><kbd>Space</kbd></td><td>재생 / 멈춤</td></tr><tr><td><kbd>.</kbd></td><td>한 스텝</td></tr><tr><td><kbd>R</kbd></td><td>다시 (현재 생물)</td></tr><tr><td><kbd>C</kbd></td><td>비우기</td></tr>
 <tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>도감 1~9번</td></tr><tr><td><kbd>D</kbd> <kbd>E</kbd> <kbd>S</kbd> <kbd>N</kbd></td><td>그리기 / 지우기 / 찍기 / 수프</td></tr>
@@ -407,6 +411,7 @@ A ← clip(A + dt·G(U), 0, 1)
     discStat:'tried {n} · found {f}', discNow:'now testing: R {R} · μ {m} · σ {s}', kMove:'mover', kSpin:'spinner', kStill:'still', save:'Save', del:'Delete', rename:'Rename',
     mineName:'My find #{n}', candName:'Candidate #{n}', mineEmpty:'Nothing saved yet — try the search below.', mineDesc:'{k} · found by you. It survived 400 steps alone in an empty world.',
     lgU:'Neighbor sum U', lgGrow:'growing (G>0)', lgShrink:'shrinking (G<0)', kExplain:'Each kernel looks at the first channel\'s neighbors and drives growth in the second. h is its weight.',
+    edge:'World edge', eWrap:'Wrap-around', eWall:'Walled', eWrapH:'Leaving the right side brings you back on the left (original Lenia). The dimmed area is a repeated copy of the same world.', eWallH:'Outside the edge is empty space. Creatures cannot cross it and hit the wall.',
     help:'Help', testsRun:'Running unit tests…', testsTitle:'Unit tests', close:'Close', custom:'(your own world)',
     cm_lenia:'Lenia', cm_magma:'Magma', cm_glacier:'Glacier', cm_neon:'Neon',
     helpHtml:`<h3>Lenia Lab</h3>
@@ -422,7 +427,7 @@ A ← clip(A + dt·G(U), 0, 1)
 <li>In <b>Graphs</b>, check whether the cells' U values sit inside the shaded band — you can see why a creature dies.</li>
 <li>Use <b>Stamp</b> to place several of the same species and let them collide.</li>
 <li>Drop <b>Random soup</b> — sometimes creatures emerge by themselves.</li>
-<li>The faint <b>blue lines</b> are the edge of the world. It wraps around, so a creature leaving one side comes back on the other.</li></ul>
+<li>The faint <b>blue lines</b> are the edge of the world. By default it wraps around, so a creature leaving one side comes back on the other; the dimmed area is a repeated copy. Switch to a walled world under <b>Graphs → World edge</b>.</li></ul>
 <div class="kbonly"><h4>Shortcuts</h4>
 <table><tr><td><kbd>Space</kbd></td><td>Play / pause</td></tr><tr><td><kbd>.</kbd></td><td>Single step</td></tr><tr><td><kbd>R</kbd></td><td>Reset current species</td></tr><tr><td><kbd>C</kbd></td><td>Clear</td></tr>
 <tr><td><kbd>1</kbd>–<kbd>9</kbd></td><td>Species 1–9</td></tr><tr><td><kbd>D</kbd> <kbd>E</kbd> <kbd>S</kbd> <kbd>N</kbd></td><td>Draw / Erase / Stamp / Soup</td></tr>
@@ -526,7 +531,7 @@ float growthF(float u, float m, float s, int gn){
 const FS_STEP = `#version 300 es
 precision highp float; precision highp int; precision highp sampler2D;
 uniform sampler2D uA; uniform sampler2D uTaps;
-uniform int uN, uTapW, uNTaps, uGn; uniform float uM, uS, uDt;
+uniform int uN, uTapW, uNTaps, uGn, uWall; uniform float uM, uS, uDt;
 layout(location = 0) out vec4 oA;
 layout(location = 1) out vec4 oU;
 ${GROWTH_GLSL}
@@ -535,7 +540,9 @@ void main(){
   float u = 0.0;
   for (int i = 0; i < uNTaps; i++) {
     vec4 tp = texelFetch(uTaps, ivec2(i % uTapW, i / uTapW), 0);
-    u += tp.z * texelFetch(uA, (p + ivec2(tp.xy)) & msk, 0).r;
+    ivec2 q = p + ivec2(tp.xy);
+    if (uWall == 1 && (q.x < 0 || q.y < 0 || q.x >= uN || q.y >= uN)) continue;   // wall: outside the world is empty
+    u += tp.z * texelFetch(uA, q & msk, 0).r;
   }
   float a = texelFetch(uA, p, 0).r;
   oA = vec4(clamp(a + uDt * growthF(u, uM, uS, uGn), 0.0, 1.0));
@@ -544,7 +551,7 @@ void main(){
 const FS_PAINT = `#version 300 es
 precision highp float; precision highp int; precision highp sampler2D;
 uniform sampler2D uA; uniform sampler2D uPat;
-uniform int uN, uMode, uCh; uniform vec2 uC, uPatSize; uniform float uRad, uAng, uSeed, uAmt;
+uniform int uN, uMode, uCh, uWall; uniform vec2 uC, uPatSize; uniform float uRad, uAng, uSeed, uAmt;
 out vec4 o;
 float hash(vec2 p){ p = fract(p * vec2(443.897, 441.423) + uSeed); p += dot(p, p.yx + 19.19); return fract((p.x + p.y) * p.x); }
 vec4 patAt(vec2 q){            // bilinear sample of the (RGBA) pattern, 0 outside
@@ -556,7 +563,7 @@ vec4 patAt(vec2 q){            // bilinear sample of the (RGBA) pattern, 0 outsi
 }
 void main(){
   ivec2 p = ivec2(gl_FragCoord.xy); vec4 a = texelFetch(uA, p, 0); float N = float(uN);
-  vec2 d = vec2(p) + 0.5 - uC; d = mod(d + N * 0.5, N) - N * 0.5;       // shortest torus offset
+  vec2 d = vec2(p) + 0.5 - uC; if (uWall == 0) d = mod(d + N * 0.5, N) - N * 0.5;       // shortest torus offset (wall: plain offset)
   if (uMode == 0) { float r = length(d) / uRad; if (r < 1.0) a[uCh] = mix(a[uCh], 1.0, uAmt * (1.0 - r * r)); }
   else if (uMode == 1) { float r = length(d) / uRad; if (r < 1.0) a *= smoothstep(0.8, 1.0, r); }
   else if (uMode == 2) {
@@ -569,7 +576,7 @@ void main(){
 const FS_STEPM = `#version 300 es
 precision highp float; precision highp int; precision highp sampler2D;
 uniform sampler2D uA; uniform sampler2D uTaps;
-uniform int uN, uTapW, uNTaps, uRows, uNK, uSel; uniform float uDt;
+uniform int uN, uTapW, uNTaps, uRows, uNK, uSel, uWall; uniform float uDt;
 uniform vec4 uSrc[16]; uniform float uMk[16], uSk[16], uHk[16]; uniform int uDst[16], uGnK[16];
 layout(location = 0) out vec4 oA;
 layout(location = 1) out vec4 oU;
@@ -581,7 +588,9 @@ void main(){
   for (int i = 0; i < uNTaps; i++) {
     ivec2 tc = ivec2(i % uTapW, i / uTapW);
     vec4 tp = texelFetch(uTaps, tc, 0);
-    vec4 a = texelFetch(uA, (p + ivec2(tp.xy)) & msk, 0);
+    ivec2 q = p + ivec2(tp.xy);
+    if (uWall == 1 && (q.x < 0 || q.y < 0 || q.x >= uN || q.y >= uN)) continue;
+    vec4 a = texelFetch(uA, q & msk, 0);
     for (int j = 0; j < nW; j++) {
       vec4 w = texelFetch(uTaps, tc + ivec2(0, (j + 1) * uRows), 0); int k = j * 4;
       U[k] += w.x * dot(a, uSrc[k]); U[k + 1] += w.y * dot(a, uSrc[k + 1]); U[k + 2] += w.z * dot(a, uSrc[k + 2]); U[k + 3] += w.w * dot(a, uSrc[k + 3]);
@@ -597,7 +606,7 @@ void main(){
 const FS_RENDER = `#version 300 es
 precision highp float; precision highp int; precision highp sampler2D;
 uniform sampler2D uA; uniform sampler2D uU; uniform sampler2D uLut;
-uniform int uN, uView, uGn, uMulti; uniform vec2 uOff, uRes; uniform float uCpp, uM, uS, uGrid; uniform vec3 uCol[3];
+uniform int uN, uView, uGn, uMulti, uWall; uniform vec2 uOff, uRes, uCenter; uniform float uCpp, uM, uS, uGrid; uniform vec3 uCol[3];
 out vec4 o;
 ${GROWTH_GLSL}
 vec4 fetch4(ivec2 c){ c &= (uN - 1); return uView == 0 ? texelFetch(uA, c, 0) : vec4(texelFetch(uU, c, 0).r); }
@@ -610,7 +619,10 @@ vec3 lut(float v){ return texture(uLut, vec2(clamp(v, 0.0, 1.0) * (255.0 / 256.0
 void main(){
   vec2 sp = vec2(gl_FragCoord.x, uRes.y - gl_FragCoord.y);
   vec2 w = uOff + sp * uCpp;
-  vec4 s4 = sample4(w); float v = s4.r;
+  // wrap: each world point is drawn bright once (its instance nearest the screen centre); farther instances are repeats.
+  // wall: everything outside [0, N) is empty space.
+  bool copy = uWall == 1 ? (any(lessThan(w, vec2(0.0))) || any(greaterThanEqual(w, vec2(float(uN))))) : any(greaterThan(abs(w - uCenter), vec2(float(uN) * 0.5)));
+  vec4 s4 = (uWall == 1 && copy) ? vec4(0.0) : sample4(w); float v = s4.r;
   vec3 col;
   if (uView == 0) {
     if (uMulti == 1) { vec3 e = s4.r * uCol[0] + s4.g * uCol[1] + s4.b * uCol[2]; vec3 bg = vec3(0.024, 0.031, 0.047); col = bg + (1.0 - bg) * (1.0 - exp(-e * 1.7)); }
@@ -622,8 +634,9 @@ void main(){
     vec2 gd = abs(fract(w / 32.0 + 0.5) - 0.5) * 32.0 / uCpp;
     col = mix(col, vec3(1.0), uGrid * (1.0 - smoothstep(0.0, 1.0, min(gd.x, gd.y))));
     vec2 bd = abs(fract(w / float(uN) + 0.5) - 0.5) * float(uN) / uCpp;   // world edge (the torus seam)
-    col = mix(col, vec3(0.38, 0.66, 1.0), 0.22 * (1.0 - smoothstep(0.0, 1.5, min(bd.x, bd.y))));
+    col = mix(col, vec3(0.38, 0.66, 1.0), (uWall == 1 ? 0.5 : 0.22) * (1.0 - smoothstep(0.0, 1.5, min(bd.x, bd.y))));
   }
+  if (copy) col = uWall == 1 ? vec3(0.035, 0.037, 0.04) + 0.02 * step(0.5, fract((w.x + w.y) / 12.0)) : mix(vec3(0.024, 0.031, 0.047), col, 0.38);
   o = vec4(col, 1.0);
 }`;
 function compile(fs) {
@@ -711,7 +724,7 @@ function ruleFromMS(ms) {
 class World {
   constructor(N, multi = false) {
     if (N & (N - 1)) throw new Error('N must be a power of two');
-    this.N = N; this.multi = multi; this.cur = 0; this.steps = 0;
+    this.N = N; this.multi = multi; this.cur = 0; this.steps = 0; this.wall = false;
     this.tex = [texR(N, N, null, multi), texR(N, N, null, multi)]; this.uTex = texR(N, N);
     this.stepFb = [fbo([this.tex[1], this.uTex]), fbo([this.tex[0], this.uTex])];   // reading tex[i] writes into tex[1-i]
     this.oneFb = [fbo([this.tex[0]]), fbo([this.tex[1]])];
@@ -733,7 +746,7 @@ class World {
     const pr = PROG.step; gl.useProgram(pr.p); gl.bindVertexArray(VAO); gl.viewport(0, 0, this.N, this.N);
     gl.uniform1i(pr.u.uA, 0); gl.uniform1i(pr.u.uTaps, 1);
     gl.uniform1i(pr.u.uN, this.N); gl.uniform1i(pr.u.uTapW, TAPW); gl.uniform1i(pr.u.uNTaps, K.n); gl.uniform1i(pr.u.uGn, P.gn);
-    gl.uniform1f(pr.u.uM, P.m); gl.uniform1f(pr.u.uS, P.s); gl.uniform1f(pr.u.uDt, 1 / P.T);
+    gl.uniform1f(pr.u.uM, P.m); gl.uniform1f(pr.u.uS, P.s); gl.uniform1f(pr.u.uDt, 1 / P.T); gl.uniform1i(pr.u.uWall, this.wall ? 1 : 0);
     gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, K.tex);
     this._loop(n);
   }
@@ -741,7 +754,7 @@ class World {
     const pr = PROG.stepm; gl.useProgram(pr.p); gl.bindVertexArray(VAO); gl.viewport(0, 0, this.N, this.N);
     gl.uniform1i(pr.u.uA, 0); gl.uniform1i(pr.u.uTaps, 1);
     gl.uniform1i(pr.u.uN, this.N); gl.uniform1i(pr.u.uTapW, TAPW); gl.uniform1i(pr.u.uNTaps, MK.n); gl.uniform1i(pr.u.uRows, MK.rows);
-    gl.uniform1i(pr.u.uNK, MK.nK); gl.uniform1i(pr.u.uSel, sel | 0); gl.uniform1f(pr.u.uDt, 1 / rule.T);
+    gl.uniform1i(pr.u.uNK, MK.nK); gl.uniform1i(pr.u.uSel, sel | 0); gl.uniform1f(pr.u.uDt, 1 / rule.T); gl.uniform1i(pr.u.uWall, this.wall ? 1 : 0);
     const src = new Float32Array(64), m = new Float32Array(16), sg = new Float32Array(16).fill(1), h = new Float32Array(16), dst = new Int32Array(16), gn = new Int32Array(16).fill(1);
     rule.kernels.forEach((k, i) => { src[i * 4 + k.c0] = 1; m[i] = k.m; sg[i] = k.s; h[i] = k.h; dst[i] = k.c1; gn[i] = k.gn || 1; });
     gl.uniform4fv(pr.u['uSrc[0]'], src); gl.uniform1fv(pr.u['uMk[0]'], m); gl.uniform1fv(pr.u['uSk[0]'], sg); gl.uniform1fv(pr.u['uHk[0]'], h);
@@ -754,7 +767,7 @@ class World {
     gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, this.tex[this.cur]);
     gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, o.pat ? o.pat.tex : this.uTex);
     gl.uniform1i(pr.u.uA, 0); gl.uniform1i(pr.u.uPat, 2);
-    gl.uniform1i(pr.u.uN, this.N); gl.uniform1i(pr.u.uMode, mode); gl.uniform1i(pr.u.uCh, this.multi ? (o.ch || 0) : 0);
+    gl.uniform1i(pr.u.uN, this.N); gl.uniform1i(pr.u.uMode, mode); gl.uniform1i(pr.u.uCh, this.multi ? (o.ch || 0) : 0); gl.uniform1i(pr.u.uWall, this.wall ? 1 : 0);
     gl.uniform2f(pr.u.uC, o.x, o.y); gl.uniform1f(pr.u.uRad, o.r || 1); gl.uniform1f(pr.u.uAng, o.ang || 0);
     gl.uniform1f(pr.u.uSeed, o.seed ?? Math.random()); gl.uniform1f(pr.u.uAmt, o.amt ?? 0.35);
     gl.uniform2f(pr.u.uPatSize, o.pat ? o.pat.w : 1, o.pat ? o.pat.h : 1);
@@ -798,22 +811,22 @@ function patternTexM(ms) {
 }
 
 /* ===================== CPU REFERENCE (tests) ===================== */
-function cpuStep(A, N, K, P) {
+function cpuStep(A, N, K, P, wall) {
   const out = new Float32Array(N * N), U = new Float32Array(N * N), msk = N - 1, dt = 1 / P.T;
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     let u = 0;
-    for (let i = 0; i < K.n; i++) u += K.taps[i * 3 + 2] * A[((y + K.taps[i * 3 + 1]) & msk) * N + ((x + K.taps[i * 3]) & msk)];
+    for (let i = 0; i < K.n; i++) { const qx = x + K.taps[i * 3], qy = y + K.taps[i * 3 + 1]; if (wall && (qx < 0 || qy < 0 || qx >= N || qy >= N)) continue; u += K.taps[i * 3 + 2] * A[(qy & msk) * N + (qx & msk)]; }
     U[y * N + x] = u;
     out[y * N + x] = Math.min(1, Math.max(0, A[y * N + x] + dt * growth(u, P.m, P.s, P.gn)));
   }
   return { A: out, U };
 }
 
-function cpuStepM(A4, N, MK, rule) {
+function cpuStepM(A4, N, MK, rule, wall) {
   const out = new Float32Array(N * N * 4), msk = N - 1, dt = 1 / rule.T, K = rule.kernels, nK = K.length, U = new Float64Array(nK);
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     U.fill(0);
-    for (const [dx, dy, ws] of MK.list) { const j = (((y + dy) & msk) * N + ((x + dx) & msk)) * 4; for (let k = 0; k < nK; k++) U[k] += ws[k] * A4[j + K[k].c0]; }
+    for (const [dx, dy, ws] of MK.list) { if (wall && (x + dx < 0 || y + dy < 0 || x + dx >= N || y + dy >= N)) continue; const j = (((y + dy) & msk) * N + ((x + dx) & msk)) * 4; for (let k = 0; k < nK; k++) U[k] += ws[k] * A4[j + K[k].c0]; }
     const D = [0, 0, 0, 0], Dn = [0, 0, 0, 0], i = (y * N + x) * 4;
     for (let k = 0; k < nK; k++) { D[K[k].c1] += K[k].h * growth(U[k], K[k].m, K[k].s, K[k].gn || 1); Dn[K[k].c1] += K[k].h; }
     for (let c = 0; c < 4; c++) out[i + c] = Dn[c] > 0 ? Math.min(1, Math.max(0, A4[i + c] + dt * D[c] / Dn[c])) : A4[i + c];
@@ -836,7 +849,7 @@ const torusDelta = (a, b, N) => { let d = b - a; d -= Math.round(d / N) * N; ret
 
 /* ===================== APP STATE ===================== */
 const SPEEDS = [5, 10, 20, 30, 60, 120, 240, 480];   // steps per second
-const S = { mode: 'single', ms: 0, rule: null, sel: 0, ch: 0, N: 256, sp: 0, R: 13, T: 10, m: 0.15, s: 0.015, b: [1], kn: 1, gn: 1, speed: 4, running: true, cmap: 'lenia', view: 'A', tool: 'draw', brush: 14, custom: false };
+const S = { edge: 'wrap', mode: 'single', ms: 0, rule: null, sel: 0, ch: 0, N: 256, sp: 0, R: 13, T: 10, m: 0.15, s: 0.015, b: [1], kn: 1, gn: 1, speed: 4, running: true, cmap: 'lenia', view: 'A', tool: 'draw', brush: 14, custom: false };
 let world = null, KER = null, MKER = null;
 const view = { k: 1, ox: 0, oy: 0 };    // k = zoom (1 = whole world fits), o = world coords of top-left
 let follow = true, editing = false, edited = false, vel = { x: 0, y: 0 };  // camera follows the centroid (smoothed, extrapolated with velocity)
@@ -845,8 +858,8 @@ let lastStat = null, speedEMA = null, statusKind = '', hadLife = false;
 
 function params() { return { m: S.m, s: S.s, T: S.T, gn: S.gn }; }
 function rebuildKernel() { freeKernel(KER); KER = gpuKernel(buildKernel(S.R, S.b, S.kn)); drawKernelGraph(); }
-function newWorld(N) { if (world) world.dispose(); world = new World(N, S.mode === 'multi'); S.N = N; fitView(); }
-function ensureWorld(multi) { if (!world || world.multi !== multi) { if (world) world.dispose(); world = new World(S.N, multi); } }
+function newWorld(N) { if (world) world.dispose(); world = new World(N, S.mode === 'multi'); world.wall = S.edge === 'wall'; S.N = N; fitView(); }
+function ensureWorld(multi) { if (!world || world.multi !== multi) { if (world) world.dispose(); world = new World(S.N, multi); } world.wall = S.edge === 'wall'; }
 function rebuildMulti() { freeKernel(MKER); MKER = gpuMultiKernel(buildMultiKernel(S.rule)); drawKernelGraph(); }
 function stepWorld(n) { if (S.mode === 'multi') world.stepM(n, MKER, S.rule, S.sel); else world.step(n, KER, params()); }
 function selKernel() { return S.mode === 'multi' ? S.rule.kernels[Math.min(S.sel, S.rule.kernels.length - 1)] : { b: S.b, kn: S.kn, gn: S.gn, m: S.m, s: S.s, r: 1 }; }
@@ -900,8 +913,8 @@ function followStep() {            // called every frame: ease the view center t
   if (!follow || editing || !lastStat || statusKind) return;
   const tNow = world.steps / S.T, px = lastStat.x + vel.x * (tNow - lastStat.t), py = lastStat.y + vel.y * (tNow - lastStat.t);
   const c = cpp(), cx = view.ox + cssW * c / 2, cy = view.oy + cssH * c / 2;
-  view.ox += torusDelta(cx, px, S.N) * 0.12; view.oy += torusDelta(cy, py, S.N) * 0.12;
-  view.ox = ((view.ox % S.N) + S.N) % S.N; view.oy = ((view.oy % S.N) + S.N) % S.N;
+  if (world.wall) { view.ox += (px - cx) * 0.12; view.oy += (py - cy) * 0.12; } else { view.ox += torusDelta(cx, px, S.N) * 0.12; view.oy += torusDelta(cy, py, S.N) * 0.12; }
+  if (!world.wall) { view.ox = ((view.ox % S.N) + S.N) % S.N; view.oy = ((view.oy % S.N) + S.N) % S.N; }
 }
 function screenToWorld(px, py) { const c = cpp(); return { x: view.ox + px * c, y: view.oy + py * c }; }
 function worldToScreen(wx, wy) { const c = cpp(); return { x: (wx - view.ox) / c, y: (wy - view.oy) / c }; }
@@ -922,6 +935,7 @@ function render() {
   gl.uniform3fv(pr.u['uCol[0]'], CHCOL);
   gl.uniform2f(pr.u.uOff, view.ox, view.oy); gl.uniform2f(pr.u.uRes, cv.width, cv.height);
   gl.uniform1f(pr.u.uCpp, cpp() / dpr); gl.uniform1f(pr.u.uM, SK.m); gl.uniform1f(pr.u.uS, SK.s); gl.uniform1f(pr.u.uGrid, 0.07);
+  { const c = cpp(); gl.uniform2f(pr.u.uCenter, view.ox + cssW * c / 2, view.oy + cssH * c / 2); gl.uniform1i(pr.u.uWall, world.wall ? 1 : 0); }
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   if (stampDrag) drawStampGuide();
 }
@@ -1361,7 +1375,11 @@ function syncTool() {
 const NARROW = matchMedia('(max-width: 899px)');
 function syncSpeed() { $('#speed').value = S.speed; $('#speedOut').textContent = SPEEDS[S.speed] + (NARROW.matches ? '/s' : LANG === 'ko' ? '스텝/초' : ' st/s'); }
 function syncPlay() { $('#playBtn').textContent = S.running ? '❚❚' : '▶'; }
+function syncEdge() {
+  $$('#edgeSeg .btn').forEach(b => b.classList.toggle('on', b.dataset.v === S.edge)); $('#edgeHint').textContent = t(S.edge === 'wall' ? 'eWallH' : 'eWrapH');
+}
 function syncView() {
+  syncEdge();
   $$('#viewSeg .btn').forEach(b => b.classList.toggle('on', b.dataset.v === S.view));
   const lg = $('#legend'); lg.hidden = S.view === 'A';
   if (S.view === 'U') { const L = makeLUT(S.cmap), c = i => `rgb(${L[i * 4]},${L[i * 4 + 1]},${L[i * 4 + 2]})`; lg.innerHTML = `<span>${t('lgU')}</span><span><i style="background:${c(10)}"></i>0</span><span><i style="background:${c(128)}"></i>μ</span><span><i style="background:${c(255)}"></i>2μ</span>`; }
@@ -1373,11 +1391,11 @@ function toast(msg) { const el = $('#toast'); el.textContent = msg; el.classList
 /* ===================== URL HASH ===================== */
 function stateToHash() {
   if (S.mode === 'multi') {
-    const q = new URLSearchParams({ mode: 'm', s: MSPECIES[S.ms].id, R: S.rule.R, T: S.rule.T, k: S.rule.kernels.map(k => [k.m, k.s, k.h].map(v => +(+v).toFixed(5)).join('_')).join('~'), N: S.N, cm: S.cmap });
+    const q = new URLSearchParams({ mode: 'm', edge: S.edge, s: MSPECIES[S.ms].id, R: S.rule.R, T: S.rule.T, k: S.rule.kernels.map(k => [k.m, k.s, k.h].map(v => +(+v).toFixed(5)).join('_')).join('~'), N: S.N, cm: S.cmap });
     return '#' + q.toString();
   }
   const sp = SPECIES[S.sp];
-  const q = new URLSearchParams({ s: sp ? sp.id : '', mu: S.m, sigma: S.s, R: S.R, T: S.T, b: S.b.map(v => +v.toFixed(4)).join(','), kn: S.kn, gn: S.gn, N: S.N, cm: S.cmap });
+  const q = new URLSearchParams({ edge: S.edge, s: sp ? sp.id : '', mu: S.m, sigma: S.s, R: S.R, T: S.T, b: S.b.map(v => +v.toFixed(4)).join(','), kn: S.kn, gn: S.gn, N: S.N, cm: S.cmap });
   return '#' + q.toString();
 }
 function parseHash(h) {
@@ -1392,6 +1410,7 @@ function parseHash(h) {
   for (const k of ['kn', 'gn']) if (['1', '2'].includes(q.get(k))) o[k] = +q.get(k);
   if (['128', '256', '512'].includes(q.get('N'))) o.N = +q.get('N');
   if (CMAPS[q.get('cm')]) o.cmap = q.get('cm');
+  if (['wrap', 'wall'].includes(q.get('edge'))) o.edge = q.get('edge');
   return o;
 }
 let hashTimer = 0, applyingHash = false;
@@ -1399,6 +1418,7 @@ function writeHash() { if (applyingHash || TESTING) return; clearTimeout(hashTim
 function applyHash() {
   const o = parseHash(location.hash); if (!Object.keys(o).length) return false;
   applyingHash = true;
+  if (o.edge) { S.edge = o.edge; if (world) world.wall = S.edge === 'wall'; syncEdge(); }
   if (o.N && o.N !== S.N) { newWorld(o.N); $('#gridSel').value = o.N; }
   if (o.cmap) { S.cmap = o.cmap; setLUT(S.cmap); $('#cmapSel').value = S.cmap; buildGallery(); }
   if (o.mode === 'm') {
@@ -1438,6 +1458,7 @@ function bindUI() {
   $('#followBtn').onclick = () => setFollow(!follow);
   $$('#toolSeg .btn').forEach(b => b.onclick = () => { S.tool = b.dataset.v; syncTool(); });
   $$('#viewSeg .btn').forEach(b => b.onclick = () => { S.view = b.dataset.v; syncView(); });
+  $$('#edgeSeg .btn').forEach(b => b.onclick = () => { if (S.edge === b.dataset.v) return; S.edge = b.dataset.v; world.wall = S.edge === 'wall'; reloadCurrent(true); syncView(); writeHash(); });
   $('#brushSize').oninput = e => { S.brush = +e.target.value; syncTool(); };
   $$('#tabs .btn').forEach(b => b.onclick = () => { document.body.dataset.tab = b.dataset.tab; syncTabs(); requestAnimationFrame(() => { drawKernelGraph(); if (lastStat) updateStats(true); }); });
   $('#linkBtn').onclick = async () => {
@@ -1931,6 +1952,19 @@ const ECO_SEARCH = async ({ seed, count, fixed, variant, mode }) => {
     renameFind(sp, ''); const reverted = sp.ko.name === I18N.ko.mineName.replace('{n}', sp.n);
     deleteFind(sp); try { if (prev === null) localStorage.removeItem('leniaMine'); else localStorage.setItem('leniaMine', prev); } catch (e) {}
     ok('33. 이름 바꾸기: 저장 + 도감 표시 + 태그는 글자로만 + 빈 이름이면 원래 이름', pass && reverted, `저장값 "${stored && stored.title}", 정보 상자 ${info.slice(0, 40)}…`); }
+  // 34. walled world: neighbor sum U is GPU == CPU in both edge modes; across the seam U > 0 when wrapping, exactly 0 with a wall
+  { const N = 64, a0 = new Float32Array(N * N); for (let y = 24; y < 40; y++) for (let x = 0; x < 10; x++) a0[y * N + x] = 0.3 + 0.5 * ((x * 7 + y * 3) % 5) / 5;
+    const K = buildKernel(13, [1], 1), seam = U => { let v = 0; for (let y = 24; y < 40; y++) for (let x = N - 4; x < N; x++) v += U[y * N + x]; return v; };
+    const res = {};
+    for (const wall of [false, true]) { const c = cpuStep(a0, N, K, P0, wall), w = mkW(N); w.wall = wall; w.setState(a0); w.step(1, K13, P0);
+      const Ug = w.readU(), Ag = w.read(); res[wall] = { dU: maxDiff(c.U, Ug), dA: maxDiff(c.A, Ag), seam: seam(Ug), mass: sum(Ag) }; }
+    const rule = { R: 9, T: 10, C: 2, kernels: [{ b: [1], r: 1, m: 0.15, s: 0.03, h: 1, c0: 0, c1: 0, kn: 1, gn: 1 }, { b: [1], r: 0.8, m: 0.2, s: 0.05, h: 0.5, c0: 0, c1: 1, kn: 1, gn: 1 }] };
+    const MK = gpuMultiKernel(buildMultiKernel(rule)), m0 = new Float32Array(N * N * 4); for (let i = 0; i < N * N; i++) { m0[i * 4] = a0[i]; m0[i * 4 + 1] = a0[i] * 0.5; }
+    let M = m0; for (let i = 0; i < 6; i++) M = cpuStepM(M, N, MK, rule, true);
+    const wm = mkW(N, true); wm.wall = true; wm.setState(m0); wm.stepM(6, MK, rule, 0); const d2 = maxDiff(M, wm.readAll()); freeKernel(MK);
+    const pass = res[false].dU < 1e-5 && res[true].dU < 1e-5 && res[false].dA < 1e-5 && res[true].dA < 1e-5 && res[false].seam > 0.1 && res[true].seam === 0 && res[true].mass > 10 && d2 < 1e-4;
+    ok('34. 벽 있는 세상: U·A 모두 GPU = CPU, 경계 너머의 이웃은 벽이면 정확히 0', pass,
+      `이어짐: 반대편 U 합 ${res[false].seam.toFixed(3)}, 벽: ${res[true].seam} · U 오차 ${res[false].dU.toExponential(1)}/${res[true].dU.toExponential(1)} · 다채널(벽) 6스텝 오차 ${d2.toExponential(1)}`); }
   } catch (e) { ok('예외 발생', false, String(e && e.stack || e)); }
   for (const w of tw) w.dispose();
   const nPass = out.filter(o => o.pass).length;
