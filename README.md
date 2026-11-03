@@ -64,7 +64,7 @@ Honest notes:
 
 ## Credits
 Bert Wang-Chak Chan, "Lenia — Biology of Artificial Life", *Complex Systems* 28(3), 2019, and "Lenia and Expanded Universe" (2020).
-Species data comes from [github.com/Chakazul/Lenia](https://github.com/Chakazul/Lenia) (MIT, © 2018 Bert Chan). The code is MIT; see `LICENSE`.
+Species data comes from [github.com/Chakazul/Lenia](https://github.com/Chakazul/Lenia) (MIT, © 2018 Bert Chan). The code is MIT; see `LICENSE`. The species data's own MIT notice is in `THIRD_PARTY_NOTICES.md`.
 
 ---
 
