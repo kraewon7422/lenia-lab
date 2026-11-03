@@ -12,6 +12,7 @@ It is one HTML file with no install and no dependencies.
 - **12 single-channel species** from Bert Chan's Lenia catalogue (Orbium, Gyrorbium, Scutium, Pentaurium, Kronium, Hydrogeminium …). Each was checked to stay alive and to move at the same speed as the reference Python implementation.
 - **6 multi-channel creatures** (Corona, Twin swimmer, Twin spinner, Nucleated cell, Double pattern, Nexus) from Chan's search results. Channel masses after 200 steps match the reference within 0.1 %.
 - **Showcase — division, colonies, structures**: 7 creatures from Chan's search results whose behaviour was *measured* here rather than taken from his notes: a cell that divides in two, runaway division that grows a tissue, a honeycomb cell tissue, a growing colony, a swimming trio, a social swarm and a vessel builder. Each description states what was measured. Test 37 re-checks the claims over 1500 steps, and test 36 checks the masses against the Python reference.
+- **Flow Lenia mode (mass-conserving)**: an implementation of Flow Lenia (Plantec et al., 2023). Matter only flows (affinity gradient + reintegration tracking), so creatures stay together, and each cell carries its own rule (h), which travels with the matter. 5 presets were found by a search in this project: a membrane cell, a bead chain, a bead ring, nested rings, and three species whose bodies fuse and blend at the border. Tests 40–42 check GPU = CPU reference (≈ 5·10⁻⁶), mass conservation (drift < 0.01 % over 1500 steps from float32 rounding), and that every preset settles to its recorded size.
 - **Ecosystem preset**: a symbiotic pair found by an automated search in this project. Territory and predator–prey rules were searched for but not found robustly (see *Ecosystem search*).
 - **Discovery mode**: tries random rules on random soup and keeps only creatures that survive **alone** in an empty world. You can save them to *My finds* (stored in your browser).
 - **Live parameters**: μ, σ, R, T, kernel rings β, kernel and growth shapes. In multi-channel mode, every kernel has its own μ, σ and h. Each slider marks the species' original value.
@@ -49,6 +50,15 @@ Robustness: a candidate is re-run with shifted positions and angles (6 variants)
 **Result shipped:** one **symbiotic pair**. Apart, both die; perfectly overlapping, they live. It is fragile: shifted by 1–3 cells it held in 7 of 16 runs. The preset starts in the exact layout, and test 32 re-runs the search experiment plus the in-app preset.
 **Not found:** no robust territory pair (best 1–4 of 6 depending on the exact start) and no predator that is a real creature on its own. These are reported here rather than shipped.
 
+## Flow Lenia notes
+- The model follows the paper's equations. Constants that the paper leaves open follow the authors' public code (github.com/erwanplantec/FlowLenia, read for reference only; that repository has no license, so none of its code is copied):
+  - kernel radius (R + 15)·r and kernel bumps exp(−(D − a)²/w)
+  - α = clip((A/C)², 0, 1)
+  - unnormalised Sobel gradients
+  - dd = 5, s = 0.65, dt = 0.2
+- On the torus the gradients wrap around; the reference code zero-pads them.
+- Honest result of the preset search: of 240 random rules with 3 kernels, 199 (83 %) produced localised creatures, matching the paper's observation. **None of them moved.** The paper's moving creatures may need more kernels (it benchmarks 10) or other initial conditions. That is a possible next step.
+
 ## How it is built
 - WebGL2 with float ping-pong textures. One fragment pass per step convolves over a texture of non-zero kernel taps. In multi-channel mode, all kernels share one tap list, with up to 16 weights per tap.
 - CPU reference implementations of both rules are used by the tests (GPU vs CPU max error ≈ 10⁻⁶).
@@ -57,7 +67,7 @@ Robustness: a candidate is re-run with shifted positions and angles (6 variants)
 ## Verification
 | Check | Result |
 |---|---|
-| `?test=1` unit tests (kernel, growth, RLE, CPU = GPU, torus, all species alive, speeds vs reference, multi-channel vs reference, discovery, storage, URL, translations, ecosystem re-run, walled world, obstacles, showcase vs reference + claims, world sizes, mixed world) | 39 / 39 |
+| `?test=1` unit tests (kernel, growth, RLE, CPU = GPU, torus, all species alive, speeds vs reference, multi-channel vs reference, discovery, storage, URL, translations, ecosystem re-run, walled world, obstacles, showcase vs reference + claims, world sizes, mixed world, Flow Lenia GPU = CPU, mass conservation, presets) | 42 / 42 |
 | Real mouse/keyboard flows (draw, erase, stamp, soup, multi-channel brushes, kernel cards, links, reset, view modes, first-visit hint) | all pass |
 | Text fit + contrast ≥ 4.5 at 360 / 390 / 1024 / 1366 / 1920 px, Korean and English | clean |
 
@@ -68,6 +78,7 @@ Honest notes:
 
 ## Credits
 Bert Wang-Chak Chan, "Lenia — Biology of Artificial Life", *Complex Systems* 28(3), 2019, and "Lenia and Expanded Universe" (2020).
+Flow Lenia: Erwan Plantec, Gautier Hamon, Mayalen Etcheverry, Pierre-Yves Oudeyer, Clément Moulin-Frier, Bert Wang-Chak Chan, "Flow-Lenia: Towards open-ended evolution in cellular automata through mass conservation and parameter localization", ALIFE 2023 (arXiv:2212.07906).
 Species data comes from [github.com/Chakazul/Lenia](https://github.com/Chakazul/Lenia) (MIT, © 2018 Bert Chan). The code is MIT; see `LICENSE`. The species data's own MIT notice is in `THIRD_PARTY_NOTICES.md`.
 
 ---
@@ -82,6 +93,7 @@ Species data comes from [github.com/Chakazul/Lenia](https://github.com/Chakazul/
 - **생태계 프리셋**: 자동 탐색으로 공생 쌍 1개를 찾았어요. 따로 두면 둘 다 죽고, 정확히 겹치면 함께 살아요. 영역 싸움과 포식자-먹이도 탐색했지만, 조건을 바꿔도 유지되는 규칙은 찾지 못했어요(README 'Ecosystem search' 참고).
 - **쇼케이스**: 분열하는 세포, 멈추지 않는 분열, 벌집 같은 세포 조직, 자라는 군체, 세 마리 유영체, 무리 짓는 개체들, 혈관 만들기. 원작자 메모가 아니라 직접 측정한 내용을 설명에 적었어요.
 - **넓은 세상 / 섞인 세상**: 단일 채널 생물은 기본으로 512²(4배 넓은) 세상에서 살아요. 찍기 도구를 고른 뒤 도감 생물을 한 번 누르면 그 생물을 찍고, 두 번 누르면 그 생물로 다시 시작해요. 다른 종을 찍으면 각자 자기 규칙으로 한 세상에 함께 살아요(최대 3종, 서로 영향은 주지 않음).
+- **Flow Lenia 모드**: 질량이 보존되는 Lenia(Plantec 외, 2023)를 구현했어요. 물질이 흐르기만 해서 생물이 흩어지지 않고, 칸마다 규칙(h)을 가져서 여러 종이 한 세상에서 맞닿고 섞여요. 프리셋 5개는 막 세포, 구슬 사슬, 구슬 고리, 겹고리, 세 종의 경계예요. 이번 탐색에서 움직이는 생물은 찾지 못했어요(README 'Flow Lenia notes' 참고).
 - **장애물 / 세상 가장자리**: 장애물을 그리거나 장애물 코스를 깔 수 있어요. 세상은 '이어진 세상'(원작 방식)과 '벽 있는 세상' 중에서 골라요.
 - **신종 탐색**: 무작위 규칙과 수프를 시험해서, 빈 세상에 혼자 두어도 살아남는 생물만 골라요. 마음에 들면 '내 발견'에 저장해요.
 - **그래프**: 지금 칸들의 U 분포가 색칠된 성장 구간 안에 있는지 보면, 생물이 왜 죽는지 보여요.
